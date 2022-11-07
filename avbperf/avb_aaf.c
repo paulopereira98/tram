@@ -246,7 +246,7 @@ static int schedule_sample(int fd, struct timespec *tspec, uint8_t *pcm_sample, 
 	return 0;
 }
 
-static bool is_valid_packet(struct avtp_stream_pdu *pdu, stream_settings_t *set, int *expected_seq)
+static bool is_valid_packet(struct avtp_stream_pdu *pdu, stream_settings_t *set, uint8_t *expected_seq)
 {
 	struct avtp_common_pdu *common = (struct avtp_common_pdu *) pdu;
 	uint64_t val64;
@@ -316,11 +316,11 @@ static bool is_valid_packet(struct avtp_stream_pdu *pdu, stream_settings_t *set,
 		 * issue and continue to process the packet. We don't want to
 		 * invalidate it since it is a valid packet after all.
 		 */
-		fprintf(stderr, "Sequence number mismatch: expected %u, got %" PRIu64 "\n",
+		fprintf(stderr, "\nSequence number mismatch: expected %u, got %" PRIu64 "\n",
 							*expected_seq, val64);
 		*expected_seq = val64;
 	}
-	*expected_seq++;
+	(*expected_seq)++;
 
 	res = avtp_aaf_pdu_get(pdu, AVTP_AAF_FIELD_FORMAT, &val64);
 	if (res < 0) {
@@ -380,7 +380,7 @@ static bool is_valid_packet(struct avtp_stream_pdu *pdu, stream_settings_t *set,
 	return true;
 }
 
-static int new_packet(int sk_fd, int timer_fd, BUFFER_T *samples, int *expected_seq, stream_settings_t *set)
+static int new_packet(int sk_fd, int timer_fd, BUFFER_T *samples, uint8_t *expected_seq, stream_settings_t *set)
 {
 	int res;
 	ssize_t n;
@@ -396,7 +396,7 @@ static int new_packet(int sk_fd, int timer_fd, BUFFER_T *samples, int *expected_
 		return -1;
 	}
 
-	if (!is_valid_packet(pdu, set, &expected_seq)) {
+	if (!is_valid_packet(pdu, set, expected_seq)) {
 		fprintf(stderr, "Dropping packet\n");
 		return 0;
 	}
@@ -459,14 +459,14 @@ int listener(char ifname[16], stream_settings_t set)
 {
 	int sk_fd, timer_fd, res;
 	struct pollfd fds[2];
-	stream_settings_t settings; //will be populated on first new_packet() call
+	uint8_t macaddr[6] = {0,0,0,0,0,0};
 	uint8_t expected_seq = 0;
 
 	BUFFER_T samples;
 	STAILQ_INIT(&samples);
 
 
-	sk_fd = create_listener_socket(ifname, 0, ETH_P_TSN);
+	sk_fd = create_listener_socket(ifname, macaddr, ETH_P_TSN);
 	if (sk_fd < 0)
 		return 1;
 
@@ -489,13 +489,13 @@ int listener(char ifname[16], stream_settings_t set)
 		}
 
 		if (fds[0].revents & POLLIN) {
-			res = new_packet(sk_fd, timer_fd, &samples, &expected_seq, &settings);
+			res = new_packet(sk_fd, timer_fd, &samples, &expected_seq, &set);
 			if (res < 0)
 				goto err;
 		}
 
 		if (fds[1].revents & POLLIN) {
-			res = timeout(timer_fd, settings.data_len, &samples);
+			res = timeout(timer_fd, set.data_len, &samples);
 			if (res < 0)
 				goto err;
 		}
