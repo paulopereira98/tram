@@ -10,6 +10,9 @@
 #include <math.h>
 #include <time.h>
 #include <stdlib.h>
+
+#include "avb_aaf.h"
+
 #define USEC_PER_SEC		1000000ULL
 #define USEC_PER_MSEC		1000ULL
 
@@ -36,15 +39,10 @@ static uint bit_depth_to_alsa(uint bit_depth)
  *
  * @param pcm_handle handle for pcm device
  * @param device device name string
- * @param sample_rate sample rate (ex: 48000 Hz)
- * @param bit_depth bit depth (ex: 24-bit)
- * @param channels number of audio channels
- * @param latency  alsa buffer requested length in frames (returns set value)
- * @param is_recorder configure for record or playmack mode
+ * @param set stream settings structure
  * @return error code
  */
-int avb_alsa_setup(snd_pcm_t **handle, char *device, uint sample_rate, uint bit_depth, 
-						uint channels, void *buffer, snd_pcm_uframes_t *latency, bool is_recorder)
+int avb_alsa_setup(snd_pcm_t **handle, char *device, stream_settings_t *set, bool is_recorder)
 {
 	int rc;
 	snd_pcm_hw_params_t *params;
@@ -74,19 +72,19 @@ int avb_alsa_setup(snd_pcm_t **handle, char *device, uint sample_rate, uint bit_
 	snd_pcm_hw_params_set_access(*handle, params, SND_PCM_ACCESS_RW_INTERLEAVED);
 
 	// Set bit depth
-	snd_pcm_hw_params_set_format(*handle, params, bit_depth_to_alsa(bit_depth));
+	snd_pcm_hw_params_set_format(*handle, params, bit_depth_to_alsa(set->bit_depth));
 
 	// Set channel count
-	snd_pcm_hw_params_set_channels(*handle, params, channels);
+	snd_pcm_hw_params_set_channels(*handle, params, set->channels);
 
 	// Set sample rate
-	snd_pcm_hw_params_set_rate_near(*handle, params, &sample_rate, NULL);
+	snd_pcm_hw_params_set_rate_near(*handle, params, &(set->sample_rate), NULL);
 
 
 	// In ALSA, period (or fragment) is the ammount of frames transfered in a single operation
 
 	// Set period size.
-	snd_pcm_hw_params_set_period_size_near(*handle, params, latency, NULL);
+	snd_pcm_hw_params_set_period_size_near(*handle, params, &(set->hw_latency), NULL);
 
 	// Write the parameters to the driver
 	rc = snd_pcm_hw_params(*handle, params);
@@ -97,13 +95,11 @@ int avb_alsa_setup(snd_pcm_t **handle, char *device, uint sample_rate, uint bit_
 
 	// Get actual latency
 	// Use a buffer large enough to hold one period
-	snd_pcm_hw_params_get_period_size(params, latency, NULL);
-	uint size = *latency * channels * ceil(bit_depth/8); // frames * data_len
-	buffer = malloc(size);
+	snd_pcm_hw_params_get_period_size(params, &(set->hw_latency), NULL);
 
 }
 
-int avb_alsa_read(snd_pcm_t *handle, void *buffer, uint data_len, snd_pcm_uframes_t *frames)
+int avb_alsa_read(snd_pcm_t *handle, void *buffer, snd_pcm_uframes_t *frames)
 {
 	int rc;
 	rc = snd_pcm_readi(handle, buffer, *frames); //read from sound card
@@ -118,12 +114,11 @@ int avb_alsa_read(snd_pcm_t *handle, void *buffer, uint data_len, snd_pcm_uframe
     }
 }
 
-int avb_alsa_write(snd_pcm_t *handle, void *buffer, uint data_len, snd_pcm_uframes_t *frames)
+int avb_alsa_write(snd_pcm_t *handle, void *buffer, snd_pcm_uframes_t *frames)
 {
 	int rc;
-	int f =*frames;
 
-	rc = snd_pcm_writei(handle, buffer, 1);
+	rc = snd_pcm_writei(handle, buffer, *frames);
 
 	//rc = snd_pcm_writei(handle, b, *frames); printf("after");
     if (rc == -EPIPE) {
@@ -138,9 +133,8 @@ int avb_alsa_write(snd_pcm_t *handle, void *buffer, uint data_len, snd_pcm_ufram
     }
 }
 
-void avb_alsa_close(snd_pcm_t *handle, void *buffer)
+void avb_alsa_close(snd_pcm_t *handle)
 {
 	snd_pcm_drain(handle);
 	snd_pcm_close(handle);
-	free(buffer);
 }

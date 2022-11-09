@@ -424,7 +424,7 @@ static int new_packet(snd_pcm_t *pcm_handle, int sk_fd, int timer_fd, struct sam
 	//if (res < 0)
 	//	return -1;
 	int frames = 1;
-	avb_alsa_write(pcm_handle, pdu->avtp_payload, 0, &frames);
+	avb_alsa_write(pcm_handle, pdu->avtp_payload, &frames);
 
 	return 0;
 }
@@ -457,7 +457,7 @@ int timeout(int fd, snd_pcm_t *pcm_handle, int data_len, struct sample_queue *sa
 	// write to sound card
 	//aaf sample = alsa frame
 	int frames = 1;
-	avb_alsa_write(pcm_handle, entry->pcm_sample, data_len, &frames);
+	avb_alsa_write(pcm_handle, entry->pcm_sample, &frames);
 
 
 	STAILQ_REMOVE_HEAD(samples, entries);
@@ -485,7 +485,7 @@ int listener(char *ifname, stream_settings_t set, char *adev)
 	struct sample_queue samples;
 	STAILQ_INIT(&samples);
 
-	void *audio_buf;
+	snd_pcm_t *pcm_handle;
 
 
 	sk_fd = create_listener_socket(ifname, macaddr, ETH_P_TSN);
@@ -504,10 +504,7 @@ int listener(char *ifname, stream_settings_t set, char *adev)
 	fds[1].events = POLLIN;
 
 	//setup audio device
-	snd_pcm_t *pcm_handle; 
-	snd_pcm_uframes_t latency = 256;
-	avb_alsa_setup(&pcm_handle, adev, set.sample_rate, set.bit_depth, set.channels, audio_buf, 
-						&latency, false);
+	avb_alsa_setup(&pcm_handle, adev, &set, false);
 	
 	// infinite loop
 	while (1) {

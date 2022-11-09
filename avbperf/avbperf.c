@@ -30,6 +30,7 @@ static int bit_depth = 16;
 static int sample_rate = 48000;
 static int channels = 2;
 static char device[32] = "default";
+static int hw_latency = 128;
 
 static int priority = 2;
 static int max_transit_time = 100;
@@ -42,7 +43,7 @@ static struct argp_option options[] = {
     {"sample-rate"  	, 'r', "Hz"     , 0, "Sample rate := {44100 | 48000 | 96000 | 192000} (default: 48000 Hz)", 4},
     {"channels"     	, 'c', "NUM"    , 0, "Channel count (default: 2)", 5},
 	{"audio-device"		, 'a', "PCM"    , 0, "Audio device PCM name (default: default)", 6},
-	{"hw-buffer"		, 'f', "frames" , 0, "Hardware buffer size in frames (default:128)", 7},
+	{"hw-latency"		, 'l', "frames" , 0, "Hardware latency in frames. mMst be base 2 (default:128)", 7},
     {"talker-mode"  	, 't', 0       	, 0, "Enable Talker mode. (Default: listener mode)", 8},
 	{ 0 }
 };
@@ -78,6 +79,11 @@ static error_t parser(int key, char *arg, struct argp_state *state)
 	
 	case 'a':
 		strncpy(device, arg, sizeof(device) - 1);
+		break;
+
+	case 'l':
+		// latency will be set by the hw device to the nearest allowed value
+		hw_latency = atoi(arg);
 		break;
 	
 	case 't':
@@ -153,7 +159,8 @@ int main(int argc, char *argv[])
 		.data_len = data_len,
 		.pdu_size = pdu_size,
 		.aaf_sample_rate = sample_rate_to_aaf(sample_rate),
-		.aaf_bit_depth = bit_depth_to_aaf(bit_depth)
+		.aaf_bit_depth = bit_depth_to_aaf(bit_depth),
+		.hw_latency = hw_latency
 	};
 
     if(talker_mode)
