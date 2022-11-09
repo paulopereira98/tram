@@ -45,13 +45,14 @@
 #include <avtp.h>
 #include <avtp_aaf.h>
 
+
+#include "avb_alsa.h"
 #include "avb_aaf.h"
 #include "common.h"
 
 #define NSEC_PER_SEC		1000000000ULL
 #define NSEC_PER_MSEC		1000000ULL
 
-#define BUFFER_T STAILQ_HEAD(sample_queue, sample_entry)
 
 struct sample_entry {
 	STAILQ_ENTRY(sample_entry) entries;
@@ -61,6 +62,11 @@ struct sample_entry {
 };
 
 
+//STAILQ_HEAD(sample_queue, sample_entry)
+struct sample_queue {
+	struct sample_entry *stqh_first;
+	struct sample_entry **stqh_last;
+};
 
 int bit_depth_to_aaf(int bit_depth)
 {
@@ -69,6 +75,8 @@ int bit_depth_to_aaf(int bit_depth)
 			return AVTP_AAF_FORMAT_INT_16BIT;
 		case 24:
 			return AVTP_AAF_FORMAT_INT_24BIT;
+		case 32:
+			return AVTP_AAF_FORMAT_FLOAT_32BIT;
 	}
 
 	return AVTP_AAF_FORMAT_INT_16BIT;
@@ -136,7 +144,7 @@ static int init_pdu(struct avtp_stream_pdu *pdu, stream_settings_t set)
 }
 
 
-int talker(char ifname[16], uint8_t macaddr[6], int priority, int max_transit_time, stream_settings_t set)
+int talker(char ifname[16], uint8_t macaddr[6], int priority, int max_transit_time, stream_settings_t set, char* adev)
 {
 	int fd, res;
 	struct sockaddr_ll sk_addr;
@@ -197,8 +205,7 @@ int talker(char ifname[16], uint8_t macaddr[6], int priority, int max_transit_ti
 		}
 
 		if (n != set.pdu_size) {
-			fprintf(stderr, "wrote %zd bytes, expected %zd\n",
-								n, set.pdu_size);
+			fprintf(stderr, "wrote %zd bytes, expected %zd\n", n, (size_t)set.pdu_size);
 		}
 	}
 
@@ -212,7 +219,8 @@ err:
 
 
 /* Schedule 'pcm_sample' to be presented at time specified by 'tspec'. */
-static int schedule_sample(int fd, struct timespec *tspec, uint8_t *pcm_sample, BUFFER_T *samples, int data_len)
+static int schedule_sample(int fd, struct timespec *tspec, uint8_t *pcm_sample, 
+									struct sample_queue *samples, int data_len)
 {
 	struct sample_entry *entry;
 
@@ -246,7 +254,8 @@ static int schedule_sample(int fd, struct timespec *tspec, uint8_t *pcm_sample, 
 	return 0;
 }
 
-static bool is_valid_packet(struct avtp_stream_pdu *pdu, stream_settings_t *set, uint8_t *expected_seq)
+static bool is_valid_packet(struct avtp_stream_pdu *pdu, stream_settings_t *set, 
+															uint8_t *expected_seq)
 {
 	struct avtp_common_pdu *common = (struct avtp_common_pdu *) pdu;
 	uint64_t val64;
@@ -380,7 +389,7 @@ static bool is_valid_packet(struct avtp_stream_pdu *pdu, stream_settings_t *set,
 	return true;
 }
 
-static int new_packet(int sk_fd, int timer_fd, BUFFER_T *samples, uint8_t *expected_seq, stream_settings_t *set)
+static int new_packet(snd_pcm_t *pcm_handle, int sk_fd, int timer_fd, struct sample_queue *samples, uint8_t *expected_seq, stream_settings_t *set)
 {
 	int res;
 	ssize_t n;
@@ -411,39 +420,50 @@ static int new_packet(int sk_fd, int timer_fd, BUFFER_T *samples, uint8_t *expec
 	if (res < 0)
 		return -1;
 
-	res = schedule_sample(timer_fd, &tspec, pdu->avtp_payload, samples, set->data_len);
-	if (res < 0)
-		return -1;
+	//res = schedule_sample(timer_fd, &tspec, pdu->avtp_payload, samples, set->data_len);
+	//if (res < 0)
+	//	return -1;
+	int frames = 1;
+	avb_alsa_write(pcm_handle, pdu->avtp_payload, 0, &frames);
 
 	return 0;
 }
 
-static int timeout(int fd, int data_len, BUFFER_T *samples)
+int timeout(int fd, snd_pcm_t *pcm_handle, int data_len, struct sample_queue *samples)
 {
 	int res;
 	ssize_t n;
 	uint64_t expirations;
 	struct sample_entry *entry;
 
+
 	n = read(fd, &expirations, sizeof(uint64_t));
 	if (n < 0) {
 		perror("Failed to read timerfd");
 		return -1;
 	}
-
 	assert(expirations == 1);
 
 	entry = STAILQ_FIRST(samples);
 	assert(entry != NULL);
 
-	res = present_data(entry->pcm_sample, data_len);
+	/*
+	//write to stdout
+	res = present_data(entry->pcm_sample, data_len); 
 	if (res < 0)
 		return -1;
+	*/
+
+	// write to sound card
+	//aaf sample = alsa frame
+	int frames = 1;
+	avb_alsa_write(pcm_handle, entry->pcm_sample, data_len, &frames);
+
 
 	STAILQ_REMOVE_HEAD(samples, entries);
     free(entry->pcm_sample);
 	free(entry);
-
+	
 	if (!STAILQ_EMPTY(samples)) {
 		entry = STAILQ_FIRST(samples);
 
@@ -455,15 +475,17 @@ static int timeout(int fd, int data_len, BUFFER_T *samples)
 	return 0;
 }
 
-int listener(char ifname[16], stream_settings_t set)
+int listener(char *ifname, stream_settings_t set, char *adev)
 {
 	int sk_fd, timer_fd, res;
 	struct pollfd fds[2];
 	uint8_t macaddr[6] = {0,0,0,0,0,0};
 	uint8_t expected_seq = 0;
 
-	BUFFER_T samples;
+	struct sample_queue samples;
 	STAILQ_INIT(&samples);
+
+	void *audio_buf;
 
 
 	sk_fd = create_listener_socket(ifname, macaddr, ETH_P_TSN);
@@ -481,6 +503,13 @@ int listener(char ifname[16], stream_settings_t set)
 	fds[1].fd = timer_fd;
 	fds[1].events = POLLIN;
 
+	//setup audio device
+	snd_pcm_t *pcm_handle; 
+	snd_pcm_uframes_t latency = 256;
+	avb_alsa_setup(&pcm_handle, adev, set.sample_rate, set.bit_depth, set.channels, audio_buf, 
+						&latency, false);
+	
+	// infinite loop
 	while (1) {
 		res = poll(fds, 2, -1);
 		if (res < 0) {
@@ -489,16 +518,18 @@ int listener(char ifname[16], stream_settings_t set)
 		}
 
 		if (fds[0].revents & POLLIN) {
-			res = new_packet(sk_fd, timer_fd, &samples, &expected_seq, &set);
+			res = new_packet(pcm_handle, sk_fd, timer_fd, &samples, &expected_seq, &set);
 			if (res < 0)
 				goto err;
 		}
-
 		if (fds[1].revents & POLLIN) {
-			res = timeout(timer_fd, set.data_len, &samples);
+			res = timeout(timer_fd, pcm_handle, set.data_len, &samples);
 			if (res < 0)
 				goto err;
 		}
+/*
+		avb_alsa_write(pcm_handle, audio_buf, set.data_len, &latency);
+*/		
 	}
 
 	return 0;

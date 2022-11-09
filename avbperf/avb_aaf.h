@@ -46,7 +46,7 @@ int bit_depth_to_aaf(int bit_depth);
 
 int sample_rate_to_aaf(int sample_rate);
 
-int talker(char ifname[16], uint8_t macaddr[6], int priority, int max_transit_time, stream_settings_t settings);
-int listener(char ifname[16], stream_settings_t settings);
+int talker(char *ifname, uint8_t *macaddr, int priority, int max_transit_time, stream_settings_t settings, char *adev);
+int listener(char *ifname, stream_settings_t settings, char *adev);
 
 #endif

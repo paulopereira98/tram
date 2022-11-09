@@ -4,16 +4,16 @@ PREFIX ?= /usr
 
 #avnu avtp
 AVB_CFLAGS := 
-AVB_LDLIBS := avtp
+AVB_LDLIBS := -lavtp
 
 #avnu avtp
 ALSA_CFLAGS := 
-ALSA_LDLIBS := #lasound
+ALSA_LDLIBS := -lasound
 
 
 CFLAGS  += $(AVB_CFLAGS) $(ALSA_CFLAGS)
 LDLIBS  += $(AVB_LDLIBS) $(ALSA_LDLIBS)
-LDFLAGS := -l
+LDFLAGS := -lm
 
 all: avbperf
 
@@ -22,7 +22,7 @@ all: avbperf
 	$(CC) -o $@ -c $(CFLAGS) $+
 
 
-avbperf: avbperf.o common.o avb_aaf.o #avb_alsa.o
+avbperf: avbperf.o common.o avb_aaf.o avb_alsa.o
 	$(CC) -o $@ $+ $(LDFLAGS) $(LDLIBS)
 
 clean:
