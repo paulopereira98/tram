@@ -43,7 +43,7 @@ static struct argp_option options[] = {
     {"sample-rate"  	, 'r', "Hz"     , 0, "Sample rate := {44100 | 48000 | 96000 | 192000} (default: 48000 Hz)", 4},
     {"channels"     	, 'c', "NUM"    , 0, "Channel count (default: 2)", 5},
 	{"audio-device"		, 'a', "PCM"    , 0, "Audio device PCM name (default: default)", 6},
-	{"hw-latency"		, 'l', "frames" , 0, "Hardware latency in frames. mMst be base 2 (default:128)", 7},
+	{"hw-latency"		, 'l', "frames" , 0, "Hardware latency in frames. must be base 2 (default:128)", 7},
     {"talker-mode"  	, 't', 0       	, 0, "Enable Talker mode. (Default: listener mode)", 8},
 	{ 0 }
 };

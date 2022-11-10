@@ -223,6 +223,7 @@ static int schedule_sample(int fd, struct timespec *tspec, uint8_t *pcm_sample,
 									struct sample_queue *samples, int data_len)
 {
 	struct sample_entry *entry;
+	int res;
 
 	entry = malloc(sizeof(*entry));
 	if (!entry) {
@@ -237,11 +238,8 @@ static int schedule_sample(int fd, struct timespec *tspec, uint8_t *pcm_sample,
 
 	STAILQ_INSERT_TAIL(samples, entry, entries);
 
-	/* If this was the first entry inserted onto the queue, we need to arm
-	 * the timer.
-	 */
+	// If this was the first entry inserted onto the queue, we need to arm the timer.
 	if (STAILQ_FIRST(samples) == entry) {
-		int res;
 
 		res = arm_timer(fd, tspec);
 		if (res < 0) {
@@ -249,9 +247,10 @@ static int schedule_sample(int fd, struct timespec *tspec, uint8_t *pcm_sample,
 			free(entry);
 			return -1;
 		}
+		res = 1; //tell if buffer was empty
 	}
 
-	return 0;
+	return res;
 }
 
 static bool is_valid_packet(struct avtp_stream_pdu *pdu, stream_settings_t *set, 
@@ -389,7 +388,8 @@ static bool is_valid_packet(struct avtp_stream_pdu *pdu, stream_settings_t *set,
 	return true;
 }
 
-static int new_packet(snd_pcm_t *pcm_handle, int sk_fd, int timer_fd, struct sample_queue *samples, uint8_t *expected_seq, stream_settings_t *set)
+static int new_packet(snd_pcm_t *pcm_handle, int sk_fd, int timer_fd, struct sample_queue *samples, 
+													 uint8_t *expected_seq, stream_settings_t *set)
 {
 	int res;
 	ssize_t n;
@@ -417,16 +417,45 @@ static int new_packet(snd_pcm_t *pcm_handle, int sk_fd, int timer_fd, struct sam
 	}
 
 	res = get_presentation_time(avtp_time, &tspec);
+	if (res == 1){
+		// if the frame is late and the buffer is empty
+		// discard it and wait for a better one to sync the hardware
+		if (STAILQ_EMPTY(samples))
+			return 1;
+	}
+	else if (res < 0)
+		return -1;
+	
+
+	// schedule_sample will only schedule the frame is the buffer is empty
+	res = schedule_sample(timer_fd, &tspec, pdu->avtp_payload, samples, set->data_len);
 	if (res < 0)
 		return -1;
 
-	//res = schedule_sample(timer_fd, &tspec, pdu->avtp_payload, samples, set->data_len);
-	//if (res < 0)
-	//	return -1;
-	int frames = 1;
-	avb_alsa_write(pcm_handle, pdu->avtp_payload, &frames);
+	//int frames = 1;
+	//avb_alsa_write(pcm_handle, pdu->avtp_payload, &frames);
 
 	return 0;
+}
+
+static void play_frame(snd_pcm_t *pcm_handle, struct sample_queue *samples);
+static inline void play_frame(snd_pcm_t *pcm_handle, struct sample_queue *samples)
+{
+	struct sample_entry *entry;
+
+	entry = STAILQ_FIRST(samples);
+	assert(entry != NULL);
+
+	int frames = 1;
+	// write to sound card
+	// AAF sample = ALSA frame
+	avb_alsa_write(pcm_handle, entry->pcm_sample, frames);
+
+
+	STAILQ_REMOVE_HEAD(samples, entries);
+    free(entry->pcm_sample);
+	free(entry);
+
 }
 
 int timeout(int fd, snd_pcm_t *pcm_handle, int data_len, struct sample_queue *samples)
@@ -434,8 +463,7 @@ int timeout(int fd, snd_pcm_t *pcm_handle, int data_len, struct sample_queue *sa
 	int res;
 	ssize_t n;
 	uint64_t expirations;
-	struct sample_entry *entry;
-
+	//struct sample_entry *entry;
 
 	n = read(fd, &expirations, sizeof(uint64_t));
 	if (n < 0) {
@@ -443,9 +471,6 @@ int timeout(int fd, snd_pcm_t *pcm_handle, int data_len, struct sample_queue *sa
 		return -1;
 	}
 	assert(expirations == 1);
-
-	entry = STAILQ_FIRST(samples);
-	assert(entry != NULL);
 
 	/*
 	//write to stdout
@@ -455,15 +480,9 @@ int timeout(int fd, snd_pcm_t *pcm_handle, int data_len, struct sample_queue *sa
 	*/
 
 	// write to sound card
-	//aaf sample = alsa frame
-	int frames = 1;
-	avb_alsa_write(pcm_handle, entry->pcm_sample, &frames);
-
-
-	STAILQ_REMOVE_HEAD(samples, entries);
-    free(entry->pcm_sample);
-	free(entry);
+	//play_frame(pcm_handle, samples);
 	
+	/* only first frame is timed, sync is provided by hardware
 	if (!STAILQ_EMPTY(samples)) {
 		entry = STAILQ_FIRST(samples);
 
@@ -471,6 +490,7 @@ int timeout(int fd, snd_pcm_t *pcm_handle, int data_len, struct sample_queue *sa
 		if (res < 0)
 			return -1;
 	}
+	*/
 
 	return 0;
 }
@@ -486,7 +506,8 @@ int listener(char *ifname, stream_settings_t set, char *adev)
 	STAILQ_INIT(&samples);
 
 	snd_pcm_t *pcm_handle;
-
+	bool is_running = false;
+	struct sample_entry *entry;
 
 	sk_fd = create_listener_socket(ifname, macaddr, ETH_P_TSN);
 	if (sk_fd < 0)
@@ -505,28 +526,46 @@ int listener(char *ifname, stream_settings_t set, char *adev)
 
 	//setup audio device
 	avb_alsa_setup(&pcm_handle, adev, &set, false);
-	
+
 	// infinite loop
 	while (1) {
-		res = poll(fds, 2, -1);
+		//res = poll(fds, 2, -1);
+		res = poll(fds, 2, -1); // 1ms timeout
 		if (res < 0) {
 			perror("Failed to poll() fds");
 			goto err;
 		}
 
 		if (fds[0].revents & POLLIN) {
+			// new_packet will schedule the frame is the buffer is empty
 			res = new_packet(pcm_handle, sk_fd, timer_fd, &samples, &expected_seq, &set);
 			if (res < 0)
 				goto err;
 		}
-		if (fds[1].revents & POLLIN) {
+		if (is_running){
+			// write to sound card
+			play_frame(pcm_handle, &samples);
+
+			if (STAILQ_EMPTY(&samples)){
+				snd_pcm_pause(pcm_handle ,0);
+				is_running = false;
+			}
+		}
+		else if ( fds[1].revents & POLLIN) {
+			// first frame is scheduled for latency management
+			// the following aren't because the playback is synced by hardware
+			is_running = true;
+			//drain alsa buffer
+
 			res = timeout(timer_fd, pcm_handle, set.data_len, &samples);
 			if (res < 0)
-				goto err;
-		}
-/*
-		avb_alsa_write(pcm_handle, audio_buf, set.data_len, &latency);
-*/		
+			//	goto err;
+			snd_pcm_prepare(pcm_handle);
+			play_frame(pcm_handle, &samples);
+			if (STAILQ_EMPTY(&samples))
+				is_running = false;
+		}	
+
 	}
 
 	return 0;

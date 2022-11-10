@@ -53,7 +53,7 @@ int avb_alsa_setup(snd_pcm_t **handle, char *device, stream_settings_t *set, boo
 
 
 	// Open PCM device.
-	rc = snd_pcm_open(handle, "default", SND_PCM_STREAM_PLAYBACK, 0);
+	rc = snd_pcm_open(handle, device, SND_PCM_STREAM_PLAYBACK, 0);
 	if (rc < 0) {
 		fprintf(stderr, "unable to open pcm device: %s\n", snd_strerror(rc));
 		exit(1);
@@ -114,20 +114,20 @@ int avb_alsa_read(snd_pcm_t *handle, void *buffer, snd_pcm_uframes_t *frames)
     }
 }
 
-int avb_alsa_write(snd_pcm_t *handle, void *buffer, snd_pcm_uframes_t *frames)
+int avb_alsa_write(snd_pcm_t *handle, void *buffer, snd_pcm_uframes_t frames);
+inline int avb_alsa_write(snd_pcm_t *handle, void *buffer, snd_pcm_uframes_t frames)
 {
 	int rc;
 
-	rc = snd_pcm_writei(handle, buffer, *frames);
+	rc = snd_pcm_writei(handle, buffer, frames);
 
-	//rc = snd_pcm_writei(handle, b, *frames); printf("after");
     if (rc == -EPIPE) {
       /* EPIPE means underrun */
       fprintf(stderr, "underrun occurred\n");
       snd_pcm_prepare(handle);
     } else if (rc < 0) {
       fprintf(stderr, "error from writei: %s\n", snd_strerror(rc));
-    }  else if (rc != (int)*frames) {
+    }  else if (rc != (int)frames) {
       fprintf(stderr,
               "short write, write %d frames\n", rc);
     }
