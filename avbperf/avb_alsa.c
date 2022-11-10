@@ -53,7 +53,7 @@ int avb_alsa_setup(snd_pcm_t **handle, char *device, stream_settings_t *set, boo
 
 
 	// Open PCM device.
-	rc = snd_pcm_open(handle, device, SND_PCM_STREAM_PLAYBACK, 0);
+	rc = snd_pcm_open(handle, device, mode, 0);
 	if (rc < 0) {
 		fprintf(stderr, "unable to open pcm device: %s\n", snd_strerror(rc));
 		exit(1);
@@ -99,17 +99,18 @@ int avb_alsa_setup(snd_pcm_t **handle, char *device, stream_settings_t *set, boo
 
 }
 
-int avb_alsa_read(snd_pcm_t *handle, void *buffer, snd_pcm_uframes_t *frames)
+int avb_alsa_read(snd_pcm_t *handle, void *buffer, snd_pcm_uframes_t frames);
+inline int avb_alsa_read(snd_pcm_t *handle, void *buffer, snd_pcm_uframes_t frames)
 {
 	int rc;
-	rc = snd_pcm_readi(handle, buffer, *frames); //read from sound card
+	rc = snd_pcm_readi(handle, buffer, frames); //read from sound card
     if (rc == -EPIPE) {
       /* EPIPE means overrun */
       fprintf(stderr, "overrun occurred\n");
       snd_pcm_prepare(handle);
     } else if (rc < 0) {
       fprintf(stderr, "error from read: %s\n", snd_strerror(rc));
-    } else if (rc != (int)*frames) {
+    } else if (rc != (int)frames) {
       fprintf(stderr, "short read, read %d frames\n", rc);
     }
 }

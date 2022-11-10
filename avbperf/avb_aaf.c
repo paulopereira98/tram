@@ -150,6 +150,8 @@ int talker(char ifname[16], uint8_t macaddr[6], int priority, int max_transit_ti
 	struct sockaddr_ll sk_addr;
 	uint8_t seq_num = 0;
 
+	snd_pcm_t *pcm_handle;
+
 	struct avtp_stream_pdu *pdu = alloca(set.pdu_size);
 
 	printf("AAF talker node\n");
@@ -166,12 +168,16 @@ int talker(char ifname[16], uint8_t macaddr[6], int priority, int max_transit_ti
 	if (res < 0)
 		goto err;
 
+	//setup audio device
+	avb_alsa_setup(&pcm_handle, adev, &set, true);
+
 	while (1) {
 		ssize_t n;
 		uint32_t avtp_time;
 
-		memset(pdu->avtp_payload, 0, set.data_len);
+		//memset(pdu->avtp_payload, 0, set.data_len);
 
+		/*
 		n = read(STDIN_FILENO, pdu->avtp_payload, set.data_len);
 		if (n == 0)
 			break;
@@ -180,6 +186,9 @@ int talker(char ifname[16], uint8_t macaddr[6], int priority, int max_transit_ti
 			fprintf(stderr, "read %zd bytes, expected %d\n",
 								n, set.data_len);
 		}
+		*/
+		// read from device
+		avb_alsa_read(pcm_handle, pdu->avtp_payload, 1);
 
 		res = calculate_avtp_time(&avtp_time, max_transit_time);
 		if (res < 0) {
