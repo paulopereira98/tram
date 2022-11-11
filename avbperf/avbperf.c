@@ -149,7 +149,7 @@ int main(int argc, char *argv[])
 	argp_parse(&argp, argc, argv, 0, NULL, NULL);
 
 	//these values will be updated later once hw_latency has been confirmed by ALSA
-	int data_len = ceil(bit_depth/8.0) * channels; 				// * hw_latency 
+	int data_len = ceil(bit_depth/8.0) * channels * 32; 				// * hw_latency 
 	int pdu_size = sizeof(struct avtp_stream_pdu) + data_len; 	// 
 
 	stream_settings_t settings = {
@@ -161,7 +161,8 @@ int main(int argc, char *argv[])
 		.pdu_size = pdu_size, //this value will be updated later by avb_alsa_setup()
 		.aaf_sample_rate = sample_rate_to_aaf(sample_rate),
 		.aaf_bit_depth = bit_depth_to_aaf(bit_depth),
-		.hw_latency = hw_latency
+		.hw_latency = hw_latency,
+		.frames_per_pdu = 32
 	};
 
     if(talker_mode)

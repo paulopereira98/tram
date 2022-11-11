@@ -193,7 +193,7 @@ int talker(char ifname[16], uint8_t macaddr[6], int priority, int max_transit_ti
 		}
 		*/
 		// read from device
-		avb_alsa_read(pcm_handle, pdu->avtp_payload, set.hw_latency);
+		avb_alsa_read(pcm_handle, pdu->avtp_payload, set.frames_per_pdu);
 
 		res = calculate_avtp_time(&avtp_time, max_transit_time);
 		if (res < 0) {
@@ -557,7 +557,7 @@ int listener(char *ifname, stream_settings_t set, char *adev)
 		}
 		if (is_running){
 			// write to sound card
-			play_frame(pcm_handle, &samples, set.hw_latency);
+			play_frame(pcm_handle, &samples, set.frames_per_pdu);
 
 			if (STAILQ_EMPTY(&samples)){
 				snd_pcm_pause(pcm_handle ,0);
@@ -574,7 +574,7 @@ int listener(char *ifname, stream_settings_t set, char *adev)
 			if (res < 0)
 			//	goto err;
 			snd_pcm_prepare(pcm_handle);
-			play_frame(pcm_handle, &samples, set.hw_latency);
+			play_frame(pcm_handle, &samples, set.frames_per_pdu);
 			if (STAILQ_EMPTY(&samples))
 				is_running = false;
 		}	

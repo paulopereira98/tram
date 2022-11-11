@@ -97,9 +97,9 @@ int avb_alsa_setup(snd_pcm_t **handle, char *device, stream_settings_t *set, boo
 	snd_pcm_hw_params_get_period_size(params, &(set->hw_latency), NULL);
 
 	//update settings with actual latency
-	set->pdu_size -= set->data_len;
-	set->data_len = ceil(set->bit_depth/8.0) * set->channels * set->hw_latency;
-	set->pdu_size += set->data_len;
+	//set->pdu_size -= set->data_len;
+	//set->data_len = ceil(set->bit_depth/8.0) * set->channels * set->hw_latency;
+	//set->pdu_size += set->data_len;
 
 }
 
