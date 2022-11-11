@@ -84,7 +84,9 @@ int avb_alsa_setup(snd_pcm_t **handle, char *device, stream_settings_t *set, boo
 	// In ALSA, period (or fragment) is the ammount of frames transfered in a single operation
 
 	// Set period size.
-	snd_pcm_hw_params_set_period_size_near(*handle, params, &(set->hw_latency), NULL);
+	snd_pcm_uframes_t frames = set->hw_latency; // 32 to 64-bit
+	snd_pcm_hw_params_set_period_size_near(*handle, params, &frames, NULL);
+
 
 	// Write the parameters to the driver
 	rc = snd_pcm_hw_params(*handle, params);
@@ -94,13 +96,12 @@ int avb_alsa_setup(snd_pcm_t **handle, char *device, stream_settings_t *set, boo
 	}
 
 	// Get actual latency
-	snd_pcm_hw_params_get_period_size(params, &(set->hw_latency), NULL);
-
+	snd_pcm_hw_params_get_period_size(params, &frames, NULL);
 	//update settings with actual latency
 	//set->pdu_size -= set->data_len;
 	//set->data_len = ceil(set->bit_depth/8.0) * set->channels * set->hw_latency;
 	//set->pdu_size += set->data_len;
-
+	set->hw_latency = frames; // 64 to 32-bit
 }
 
 int avb_alsa_read(snd_pcm_t *handle, void *buffer, snd_pcm_uframes_t frames);
