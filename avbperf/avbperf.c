@@ -148,16 +148,17 @@ int main(int argc, char *argv[])
 
 	argp_parse(&argp, argc, argv, 0, NULL, NULL);
 
-	int data_len = ceil(bit_depth/8.0) * channels;
-	int pdu_size = sizeof(struct avtp_stream_pdu) + data_len;
+	//these values will be updated later once hw_latency has been confirmed by ALSA
+	int data_len = ceil(bit_depth/8.0) * channels; 				// * hw_latency 
+	int pdu_size = sizeof(struct avtp_stream_pdu) + data_len; 	// 
 
 	stream_settings_t settings = {
 		.stream_id = stream_id,
 		.sample_rate = sample_rate,
 		.bit_depth = bit_depth,
 		.channels = channels,
-		.data_len = data_len,
-		.pdu_size = pdu_size,
+		.data_len = data_len, //this value will be updated later by avb_alsa_setup()
+		.pdu_size = pdu_size, //this value will be updated later by avb_alsa_setup()
 		.aaf_sample_rate = sample_rate_to_aaf(sample_rate),
 		.aaf_bit_depth = bit_depth_to_aaf(bit_depth),
 		.hw_latency = hw_latency
@@ -169,5 +170,3 @@ int main(int argc, char *argv[])
         return listener(ifname, settings, device);
 
 }
-
-//TODO: add frames per packet

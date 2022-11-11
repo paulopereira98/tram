@@ -152,7 +152,7 @@ int talker(char ifname[16], uint8_t macaddr[6], int priority, int max_transit_ti
 
 	snd_pcm_t *pcm_handle;
 
-	struct avtp_stream_pdu *pdu = alloca(set.pdu_size);
+	struct avtp_stream_pdu *pdu;
 
 	printf("AAF talker node\n");
 
@@ -164,12 +164,17 @@ int talker(char ifname[16], uint8_t macaddr[6], int priority, int max_transit_ti
 	if (res < 0)
 		goto err;
 
+	//setup audio device
+	avb_alsa_setup(&pcm_handle, adev, &set, true);
+
+	
+	pdu = alloca(set.pdu_size);
+
 	res = init_pdu(pdu, set);
 	if (res < 0)
 		goto err;
 
-	//setup audio device
-	avb_alsa_setup(&pcm_handle, adev, &set, true);
+
 
 	while (1) {
 		ssize_t n;
@@ -188,7 +193,7 @@ int talker(char ifname[16], uint8_t macaddr[6], int priority, int max_transit_ti
 		}
 		*/
 		// read from device
-		avb_alsa_read(pcm_handle, pdu->avtp_payload, 1);
+		avb_alsa_read(pcm_handle, pdu->avtp_payload, set.hw_latency);
 
 		res = calculate_avtp_time(&avtp_time, max_transit_time);
 		if (res < 0) {
@@ -447,15 +452,14 @@ static int new_packet(snd_pcm_t *pcm_handle, int sk_fd, int timer_fd, struct sam
 	return 0;
 }
 
-static void play_frame(snd_pcm_t *pcm_handle, struct sample_queue *samples);
-static inline void play_frame(snd_pcm_t *pcm_handle, struct sample_queue *samples)
+static void play_frame(snd_pcm_t *pcm_handle, struct sample_queue *samples, uint frames);
+static inline void play_frame(snd_pcm_t *pcm_handle, struct sample_queue *samples, uint frames)
 {
 	struct sample_entry *entry;
 
 	entry = STAILQ_FIRST(samples);
 	assert(entry != NULL);
 
-	int frames = 1;
 	// write to sound card
 	// AAF sample = ALSA frame
 	avb_alsa_write(pcm_handle, entry->pcm_sample, frames);
@@ -553,7 +557,7 @@ int listener(char *ifname, stream_settings_t set, char *adev)
 		}
 		if (is_running){
 			// write to sound card
-			play_frame(pcm_handle, &samples);
+			play_frame(pcm_handle, &samples, set.hw_latency);
 
 			if (STAILQ_EMPTY(&samples)){
 				snd_pcm_pause(pcm_handle ,0);
@@ -570,7 +574,7 @@ int listener(char *ifname, stream_settings_t set, char *adev)
 			if (res < 0)
 			//	goto err;
 			snd_pcm_prepare(pcm_handle);
-			play_frame(pcm_handle, &samples);
+			play_frame(pcm_handle, &samples, set.hw_latency);
 			if (STAILQ_EMPTY(&samples))
 				is_running = false;
 		}	

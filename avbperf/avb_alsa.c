@@ -1,6 +1,6 @@
 /* Copyright (C) 2022 Paulo Pereira, Uminho <github.com/paulopereira98>
- * Copyright (C) 2004 Jeff Tranter
  *
+ * Copyright (C) 2004 Jeff Tranter
  * https://www.linuxjournal.com/article/6735
  */
 
@@ -94,8 +94,12 @@ int avb_alsa_setup(snd_pcm_t **handle, char *device, stream_settings_t *set, boo
 	}
 
 	// Get actual latency
-	// Use a buffer large enough to hold one period
 	snd_pcm_hw_params_get_period_size(params, &(set->hw_latency), NULL);
+
+	//update settings with actual latency
+	set->pdu_size -= set->data_len;
+	set->data_len = ceil(set->bit_depth/8.0) * set->channels * set->hw_latency;
+	set->pdu_size += set->data_len;
 
 }
 
