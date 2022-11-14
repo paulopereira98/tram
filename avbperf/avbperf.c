@@ -149,7 +149,7 @@ int main(int argc, char *argv[])
 	argp_parse(&argp, argc, argv, 0, NULL, NULL);
 
 	//these values will be updated later once hw_latency has been confirmed by ALSA
-	int data_len = ceil(bit_depth/8.0) * channels * 32; 				// * hw_latency 
+	int data_len = ceil(bit_depth/8.0) * channels; 				// * frames_per_pdu 
 	int pdu_size = sizeof(struct avtp_stream_pdu) + data_len; 	// 
 
 	stream_settings_t settings = {
@@ -157,14 +157,20 @@ int main(int argc, char *argv[])
 		.sample_rate = sample_rate,
 		.bit_depth = bit_depth,
 		.channels = channels,
-		.data_len = data_len, //this value will be updated later by avb_alsa_setup()
-		.pdu_size = pdu_size, //this value will be updated later by avb_alsa_setup()
+		.data_len = data_len, 			//this value will be updated later by avb_alsa_setup()
+		.pdu_size = pdu_size, 			//this value will be updated later by avb_alsa_setup()
 		.aaf_sample_rate = sample_rate_to_aaf(sample_rate),
 		.aaf_bit_depth = bit_depth_to_aaf(bit_depth),
-		.hw_latency = hw_latency,
-		.frames_per_pdu = 32
+		.hw_latency = hw_latency, 		//this value will be updated later by avb_alsa_setup()
+		.frames_per_pdu = hw_latency	//this value will be updated later by avb_alsa_setup()
 	};
-
+	/* 
+			For the purposes of this project, 
+		the number of frames sent in a single packet (frames_per_pdu)
+		will match the hardware buffer size/latency (hw_latency).
+			A frame is a set of samples captured in the same instant 
+		(i.e.: Left and Right audio channels)
+	*/
     if(talker_mode)
         return talker(ifname, macaddr, priority, max_transit_time, settings, device);
     else
