@@ -26,7 +26,7 @@ static uint bit_depth_to_alsa(uint bit_depth)
   case 16:
     return SND_PCM_FORMAT_S16_LE;
   case 24:
-    return SND_PCM_FORMAT_S24_LE;
+    return SND_PCM_FORMAT_S24_3LE; // 3 byte mode
   case 32:
     return SND_PCM_FORMAT_FLOAT_LE;
   }
