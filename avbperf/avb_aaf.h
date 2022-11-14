@@ -41,7 +41,7 @@ typedef struct {
     uint aaf_sample_rate;
     uint aaf_bit_depth;
     uint hw_latency;
-    uint frames_per_pdu;
+    uint64_t frames_per_pdu;
 }stream_settings_t;
 
 int bit_depth_to_aaf(int bit_depth);

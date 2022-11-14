@@ -12,9 +12,9 @@
 
 int avb_alsa_setup(snd_pcm_t **handle, char *device, stream_settings_t *set, bool is_recorder);
 
-int avb_alsa_read(snd_pcm_t *handle, void *buffer, snd_pcm_uframes_t *frames);
+int avb_alsa_read(snd_pcm_t *handle, void *buffer, snd_pcm_uframes_t frames);
 
-int avb_alsa_write(snd_pcm_t *handle, void *buffer, snd_pcm_uframes_t *frames);
+int avb_alsa_write(snd_pcm_t *handle, void *buffer, snd_pcm_uframes_t frames);
 
 void avb_alsa_close(snd_pcm_t *handle);
 

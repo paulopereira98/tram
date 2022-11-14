@@ -99,6 +99,22 @@ int sample_rate_to_aaf(int sample_rate)
 	return AVTP_AAF_PCM_NSR_48KHZ;
 }
 
+static void print_settings(FILE *file, stream_settings_t set, bool is_talker){
+
+	fprintf(file, "///////////////////////////////////////////////////////\n");
+    fprintf(file, "///                    AVB perf                     ///\n");
+	fprintf(file, is_talker ? \
+				  "///                 AAF Talker Node                 ///\n" : \
+				  "///                AAF Listener Node                ///\n");
+    fprintf(file, "///////////////////////////////////////////////////////\n\n");
+
+	fprintf(file, "Stream ID   : %16lX\n", 	set.stream_id	);
+	fprintf(file, "Sample rate : %d Hz\n", 	set.sample_rate	);
+	fprintf(file, "Bit depth   : %d-bit\n", set.bit_depth	);
+	fprintf(file, "Channels    : %d\n", 	set.channels	);
+	fprintf(file, "HW latency  : %d samples\n", set.hw_latency);
+	fprintf(file, "HW latency  : %.2f ms\n\n", (float)set.hw_latency / set.sample_rate * 1000.0f);
+}
 
 static int init_pdu(struct avtp_stream_pdu *pdu, stream_settings_t set)
 {
@@ -154,7 +170,6 @@ int talker(char ifname[16], uint8_t macaddr[6], int priority, int max_transit_ti
 
 	struct avtp_stream_pdu *pdu;
 
-	printf("AAF talker node\n");
 
 	fd = create_talker_socket(priority);
 	if (fd < 0)
@@ -167,6 +182,7 @@ int talker(char ifname[16], uint8_t macaddr[6], int priority, int max_transit_ti
 	//setup audio device
 	avb_alsa_setup(&pcm_handle, adev, &set, true);
 
+	print_settings(stdout, set, true);
 	
 	pdu = alloca(set.pdu_size);
 
@@ -504,6 +520,8 @@ int listener(char *ifname, stream_settings_t set, char *adev)
 
 	//setup audio device
 	avb_alsa_setup(&pcm_handle, adev, &set, false);
+
+	print_settings(stdout, set, false);
 
 	// infinite loop
 	while (1) {
