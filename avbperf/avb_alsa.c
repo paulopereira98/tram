@@ -111,6 +111,7 @@ int avb_alsa_read(snd_pcm_t *handle, void *buffer, snd_pcm_uframes_t frames);
 inline int avb_alsa_read(snd_pcm_t *handle, void *buffer, snd_pcm_uframes_t frames)
 {
 	int rc;
+
 	rc = snd_pcm_readi(handle, buffer, frames); //read from sound card
     if (rc == -EPIPE) {
       /* EPIPE means overrun */
@@ -129,7 +130,6 @@ inline int avb_alsa_write(snd_pcm_t *handle, void *buffer, snd_pcm_uframes_t fra
 	int rc;
 
 	rc = snd_pcm_writei(handle, buffer, frames);
-
     if (rc == -EPIPE) {
       /* EPIPE means underrun */
       fprintf(stderr, "underrun occurred\n");

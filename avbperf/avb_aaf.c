@@ -180,18 +180,6 @@ int talker(char ifname[16], uint8_t macaddr[6], int priority, int max_transit_ti
 		ssize_t n;
 		uint32_t avtp_time;
 
-		//memset(pdu->avtp_payload, 0, set.data_len);
-
-		/*
-		n = read(STDIN_FILENO, pdu->avtp_payload, set.data_len);
-		if (n == 0)
-			break;
-
-		if (n != set.data_len) {
-			fprintf(stderr, "read %zd bytes, expected %d\n",
-								n, set.data_len);
-		}
-		*/
 		// read from device
 		avb_alsa_read(pcm_handle, pdu->avtp_payload, set.frames_per_pdu);
 
@@ -446,9 +434,6 @@ static int new_packet(snd_pcm_t *pcm_handle, int sk_fd, int timer_fd, struct sam
 	if (res < 0)
 		return -1;
 
-	//int frames = 1;
-	//avb_alsa_write(pcm_handle, pdu->avtp_payload, &frames);
-
 	return 0;
 }
 
@@ -484,26 +469,6 @@ int timeout(int fd, snd_pcm_t *pcm_handle, int data_len, struct sample_queue *sa
 		return -1;
 	}
 	assert(expirations == 1);
-
-	/*
-	//write to stdout
-	res = present_data(entry->pcm_sample, data_len); 
-	if (res < 0)
-		return -1;
-	*/
-
-	// write to sound card
-	//play_frame(pcm_handle, samples);
-	
-	/* only first frame is timed, sync is provided by hardware
-	if (!STAILQ_EMPTY(samples)) {
-		entry = STAILQ_FIRST(samples);
-
-		res = arm_timer(fd, &entry->tspec);
-		if (res < 0)
-			return -1;
-	}
-	*/
 
 	return 0;
 }
@@ -542,29 +507,28 @@ int listener(char *ifname, stream_settings_t set, char *adev)
 
 	// infinite loop
 	while (1) {
-		//res = poll(fds, 2, -1);
-		res = poll(fds, 2, -1); // 1ms timeout
+		res = poll(fds, 2, -1);
 		if (res < 0) {
 			perror("Failed to poll() fds");
 			goto err;
 		}
 
+		// Poll socket
 		if (fds[0].revents & POLLIN) {
 			// new_packet will schedule the frame is the buffer is empty
 			res = new_packet(pcm_handle, sk_fd, timer_fd, &samples, &expected_seq, &set);
 			if (res < 0)
 				goto err;
 		}
+
 		if (is_running){
 			// write to sound card
 			play_frame(pcm_handle, &samples, set.frames_per_pdu);
 
-			if (STAILQ_EMPTY(&samples)){
-				snd_pcm_pause(pcm_handle ,0);
+			if (STAILQ_EMPTY(&samples))
 				is_running = false;
-			}
 		}
-		else if ( fds[1].revents & POLLIN) {
+		else if (fds[1].revents & POLLIN) { // Poll timer
 			// first frame is scheduled for latency management
 			// the following aren't because the playback is synced by hardware
 			is_running = true;
@@ -572,7 +536,7 @@ int listener(char *ifname, stream_settings_t set, char *adev)
 
 			res = timeout(timer_fd, pcm_handle, set.data_len, &samples);
 			if (res < 0)
-			//	goto err;
+				goto err;
 			snd_pcm_prepare(pcm_handle);
 			play_frame(pcm_handle, &samples, set.frames_per_pdu);
 			if (STAILQ_EMPTY(&samples))

@@ -25,7 +25,7 @@
 static char ifname[16];
 static uint8_t macaddr[6];
 static bool talker_mode = false;
-static uint64_t stream_id= 0xAABBCCDDEEFF0001;//endianess
+static uint64_t stream_id= 0xAABBCCDDEEFF0001;
 static int bit_depth = 16;
 static int sample_rate = 48000;
 static int channels = 2;
@@ -168,7 +168,7 @@ int main(int argc, char *argv[])
 			For the purposes of this project, 
 		the number of frames sent in a single packet (frames_per_pdu)
 		will match the hardware buffer size/latency (hw_latency).
-			A frame is a set of samples captured in the same instant 
+			A frame is a set of samples captured at the same instant 
 		(i.e.: Left and Right audio channels)
 	*/
     if(talker_mode)
