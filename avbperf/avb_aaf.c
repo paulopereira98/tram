@@ -46,9 +46,9 @@
 #include <avtp_aaf.h>
 
 
+#include "common.h"
 #include "avb_alsa.h"
 #include "avb_aaf.h"
-#include "common.h"
 
 #define NSEC_PER_SEC		1000000000ULL
 #define NSEC_PER_MSEC		1000000ULL
@@ -489,10 +489,29 @@ int timeout(int fd, snd_pcm_t *pcm_handle, int data_len, struct sample_queue *sa
 	return 0;
 }
 
-int listener(char *ifname, stream_settings_t set, char *adev)
+static int setup_session_timer(int timer_fd, struct timespec *end_tspecx, int rec_time)
 {
-	int sk_fd, timer_fd, res;
-	struct pollfd fds[2];
+	int res;
+	struct timespec end_tspec;
+	res = clock_gettime(CLOCK_REALTIME, &end_tspec);
+	if (res < 0) {
+		perror("Failed to get time from PHC");
+		return -1;
+	}
+	end_tspec.tv_sec += rec_time;
+	
+	res = arm_timer(timer_fd, &end_tspec);
+	if (res < 0) {
+		perror("Failed to arm session timer");
+		return -1;
+	}
+	return 0;
+}
+{
+int listener(char *ifname, stream_settings_t set, char *adev, int rec_time)
+{
+	int sk_fd, timer_fd, session_tim_fd, res;
+	struct pollfd fds[3];
 	uint8_t macaddr[6] = {0,0,0,0,0,0};
 	uint8_t expected_seq = 0;
 
@@ -503,6 +522,8 @@ int listener(char *ifname, stream_settings_t set, char *adev)
 	bool is_running = false;
 	struct sample_entry *entry;
 
+	struct timespec end_tspec;
+
 	sk_fd = create_listener_socket(ifname, macaddr, ETH_P_TSN);
 	if (sk_fd < 0)
 		return 1;
@@ -512,20 +533,42 @@ int listener(char *ifname, stream_settings_t set, char *adev)
 		close(sk_fd);
 		return 1;
 	}
-
+	session_tim_fd = timerfd_create(CLOCK_REALTIME, 0);
+	if (session_tim_fd < 0) {
+		close(sk_fd);
+		close(timer_fd);
+		return 1;
+	}
+	
+	// socket
 	fds[0].fd = sk_fd;
 	fds[0].events = POLLIN;
+	// packet timer
 	fds[1].fd = timer_fd;
-	fds[1].events = POLLIN;
-
+	fds[1].events = POLLIN; //POLLPRI
+	// session timer
+	fds[2].fd = session_tim_fd;
+	fds[2].events = POLLIN;
+	
 	//setup audio device
 	avb_alsa_setup(&pcm_handle, adev, &set, false);
 
 	print_settings(stdout, set, false);
 
+	//setup session timer
+	if (rec_time){
+		res = setup_session_timer(session_tim_fd, &end_tspec, rec_time);
+		if (res < 0) {
+			perror("Failed to set session timer");
+			goto err;
+		}
+
+	}
+
+
 	// infinite loop
 	while (1) {
-		res = poll(fds, 2, -1);
+		res = poll(fds, 3, -1);
 		if (res < 0) {
 			perror("Failed to poll() fds");
 			goto err;
@@ -546,11 +589,10 @@ int listener(char *ifname, stream_settings_t set, char *adev)
 			if (STAILQ_EMPTY(&samples))
 				is_running = false;
 		}
-		else if (fds[1].revents & POLLIN) { // Poll timer
+		else if (fds[1].revents & POLLIN) { // Poll packet timer
 			// first frame is scheduled for latency management
 			// the following aren't because the playback is synced by hardware
 			is_running = true;
-			//drain alsa buffer
 
 			res = timeout(timer_fd, pcm_handle, set.data_len, &samples);
 			if (res < 0)
@@ -559,15 +601,24 @@ int listener(char *ifname, stream_settings_t set, char *adev)
 			play_frame(pcm_handle, &samples, set.frames_per_pdu);
 			if (STAILQ_EMPTY(&samples))
 				is_running = false;
-		}	
+		}
+
+		// Poll session timer
+		if (fds[2].revents & POLLIN) {
+			// session timeout
+			break;
+		}
 
 	}
+	//close devices
+	avb_alsa_close(pcm_handle);
 
 	return 0;
 
 err:
 	close(sk_fd);
 	close(timer_fd);
+	close(session_tim_fd);
 	return 1;
 }
 

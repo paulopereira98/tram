@@ -23,7 +23,6 @@
 
 
 static char ifname[16];
-static uint8_t macaddr[6];
 static bool talker_mode = false;
 static uint64_t stream_id= 0xAABBCCDDEEFF0001;
 static int bit_depth = 16;
@@ -32,8 +31,11 @@ static int channels = 2;
 static char device[32] = "default";
 static int hw_latency = 128;
 
+static uint8_t macaddr[6];
 static int priority = 2;
 static int max_transit_time = 100;
+
+static int record_time = 0;
 
 
 static struct argp_option options[] = {
@@ -44,100 +46,132 @@ static struct argp_option options[] = {
     {"channels"     	, 'c', "NUM"    , 0, "Channel count (default: 2)", 5},
 	{"audio-device"		, 'a', "PCM"    , 0, "Audio device PCM name (default: default)", 6},
 	{"hw-latency"		, 'l', "frames" , 0, "Hardware latency in frames. must be base 2 (default:128)", 7},
-    {"talker-mode"  	, 't', 0       	, 0, "Enable Talker mode. (Default: listener mode)", 8},
+    {"talker"  			, 9	 , 0       	, 0, "Enable Talker mode. (Default: listener mode)", 9},
 	{ 0 }
 };
 static struct argp_option options_talker[] = {
-	{"dst-addr"         , 'd', "MACADDR", 0, "Destination MAC address", 10},
-	{"prio"             , 'p', "NUM"    , 0, "SO_PRIORITY to be set in socket (default: 2)", 11},
-	{"max-transit-time" , 'm', "MSEC"   , 0, "Maximum Transit Time in ms (default: 100)", 12},
+	{"dst-addr"         , 'd', "MACADDR", 0, "Destination MAC address", 11},
+	{"prio"             , 'p', "NUM"    , 0, "SO_PRIORITY to be set in socket (default: 2)", 12},
+	{"max-transit-time" , 'm', "MSEC"   , 0, "Maximum Transit Time in ms (default: 100)", 13},
+	{ 0 }
+};
+static struct argp_option options_listener[] = {
+	{"time"  			, 't', "s"      , 0, "Run only for n seconds (default = 0 freerun)", 21},
 	{ 0 }
 };
 
-
 static error_t parser(int key, char *arg, struct argp_state *state)
 {
-	static bool got_mac = 0, got_iface = 0;
+	static bool got_iface = 0;
 	int res;
 
 	switch (key) {
-	case 'd':
-		res = sscanf(arg, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
-					&macaddr[0], &macaddr[1], &macaddr[2],
-					&macaddr[3], &macaddr[4], &macaddr[5]);
-		if (res != 6) {
-			fprintf(stderr, "Invalid address\n");
-			exit(EXIT_FAILURE);
-		}
-		got_mac = true;
-		break;
 
-	case 'i':
-		strncpy(ifname, arg, sizeof(ifname) - 1);
-		got_iface = true;
-		break;
-	
-	case 'a':
-		strncpy(device, arg, sizeof(device) - 1);
-		break;
+		case 'i':  // --ifname
+			strncpy(ifname, arg, sizeof(ifname) - 1);
+			got_iface = true;
+			break;
+		
+		case 'a': // --audio-device
+			strncpy(device, arg, sizeof(device) - 1);
+			break;
 
-	case 'l':
-		// latency will be set by the hw device to the nearest allowed value
-		hw_latency = atoi(arg);
-		break;
-	
-	case 't':
-		talker_mode = true;
-		break;
+		case 'l': // --hw-latency
+			// latency will be set by the hw device to the nearest allowed value
+			hw_latency = atoi(arg);
+			break;
+		
+		case 9: // --talker
+			talker_mode = true;
+			break;
 
-    case 's':
-        res = sscanf(arg, "%16lx", &stream_id);
-		break;
+		case 's': // --stream-id
+			res = sscanf(arg, "%16lx", &stream_id);
+			break;
+		
+		case 'b': // --bit-depth
+			bit_depth = atoi(arg);
+			if (bit_depth != 16 && bit_depth != 24 && bit_depth != 32) {
+				fprintf(stderr, "Invalid bit depth\n");
+				exit(EXIT_FAILURE);
+			}
+			break;
 
-	case 'p':
-		priority = atoi(arg);
-        if (priority < 0 || priority >= 7) {
-			fprintf(stderr, "Invalid priority\n");
-			exit(EXIT_FAILURE);
-		}
-		break;
+		case 'r': // --sample-rate
+			sample_rate = atoi(arg);
+			break;
 
-	case 'm':
-		max_transit_time = atoi(arg);
-		break;
-    
-    case 'b':
-		bit_depth = atoi(arg);
-        if (bit_depth != 16 && bit_depth != 24 && bit_depth != 32) {
-			fprintf(stderr, "Invalid bit depth\n");
-			exit(EXIT_FAILURE);
-		}
-		break;
-    case 'r':
-		sample_rate = atoi(arg);
-		break;
-    case 'c':
-		channels = atoi(arg);
-		break;
-	case ARGP_KEY_END:
-		if(talker_mode && !got_mac){
-			fprintf(stderr, "Mac address is mandatory\n");
-			exit(EXIT_FAILURE);
-		}
-		if(!got_iface){
-			fprintf(stderr, "Network interface is mandatory\n");
-			exit(EXIT_FAILURE);
-		}
-		break;
+		case 'c': // --channels
+			channels = atoi(arg);
+			break;
+
+		case ARGP_KEY_END:
+			if(!got_iface){
+				fprintf(stderr, "Network interface is mandatory\n");
+				exit(EXIT_FAILURE);
+			}
+			break;
 	}
 	return 0;
 }
 
+static error_t parser_talker(int key, char *arg, struct argp_state *state)
+{
+	static bool got_mac = false;
+	int res;
 
-static struct argp argp_talker = { options_talker, parser};
+	switch (key) {
+
+		case 'd': // --dst-addr
+			res = sscanf(arg, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
+						&macaddr[0], &macaddr[1], &macaddr[2],
+						&macaddr[3], &macaddr[4], &macaddr[5]);
+			if (res != 6) {
+				fprintf(stderr, "Invalid address\n");
+				exit(EXIT_FAILURE);
+			}
+			got_mac = true;
+			break;
+
+		case 'p': // --prio
+			priority = atoi(arg);
+			if (priority < 0 || priority >= 7) {
+				fprintf(stderr, "Invalid priority\n");
+				exit(EXIT_FAILURE);
+			}
+			break;
+
+		case 'm': // --max-transit-time
+			max_transit_time = atoi(arg);
+			break;
+
+		case ARGP_KEY_END:
+			if(talker_mode && !got_mac){
+				fprintf(stderr, "Mac address is mandatory\n");
+				exit(EXIT_FAILURE);
+			}
+			break;
+	}
+	return 0;
+}
+static error_t parser_listener(int key, char *arg, struct argp_state *state)
+{
+	int res;
+
+	switch (key) {
+		case 't': // --time
+			record_time = atoi(arg);
+			break;
+	}
+	return 0;
+}
+
+static struct argp argp_talker = { options_talker, parser_talker};
+static struct argp argp_listener = { options_listener, parser_listener};
 
 static struct argp_child argp_childs[] = {
-	{&argp_talker	, 0, "Takler options:", 5},
+	{&argp_talker	, 0, "Takler options:"	, 10},
+	{&argp_listener	, 0, "Listener options:", 20},
 	{0}
 };
 static struct argp argp = { options, parser, 0, 0, argp_childs };
@@ -174,6 +208,6 @@ int main(int argc, char *argv[])
     if(talker_mode)
         return talker(ifname, macaddr, priority, max_transit_time, settings, device);
     else
-        return listener(ifname, settings, device);
+        return listener(ifname, settings, device, record_time);
 
 }
