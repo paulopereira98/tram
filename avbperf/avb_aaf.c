@@ -41,9 +41,11 @@
 #include <sys/timerfd.h>
 #include <unistd.h>
 #include <inttypes.h>
+#include <math.h>
 
 #include <avtp.h>
 #include <avtp_aaf.h>
+#include <wav.h>
 
 
 #include "common.h"
@@ -53,6 +55,7 @@
 #define NSEC_PER_SEC		1000000000ULL
 #define NSEC_PER_MSEC		1000000ULL
 
+#define TMP_WAV_FILE	"/tmp/avb_perf.wav"
 
 struct sample_entry {
 	STAILQ_ENTRY(sample_entry) entries;
@@ -177,7 +180,7 @@ int talker(char ifname[16], uint8_t macaddr[6], int priority, int max_transit_ti
 
 	res = setup_socket_address(fd, ifname, macaddr, ETH_P_TSN, &sk_addr);
 	if (res < 0)
-		goto err;
+		goto end;
 
 	//setup audio device
 	avb_alsa_setup(&pcm_handle, adev, &set, true);
@@ -188,7 +191,7 @@ int talker(char ifname[16], uint8_t macaddr[6], int priority, int max_transit_ti
 
 	res = init_pdu(pdu, set);
 	if (res < 0)
-		goto err;
+		goto end;
 
 
 
@@ -202,37 +205,37 @@ int talker(char ifname[16], uint8_t macaddr[6], int priority, int max_transit_ti
 		res = calculate_avtp_time(&avtp_time, max_transit_time);
 		if (res < 0) {
 			fprintf(stderr, "Failed to calculate avtp time\n");
-			goto err;
+			goto end;
 		}
 
 		res = avtp_aaf_pdu_set(pdu, AVTP_AAF_FIELD_TIMESTAMP,
 								avtp_time);
 		if (res < 0)
-			goto err;
+			goto end;
 
 		res = avtp_aaf_pdu_set(pdu, AVTP_AAF_FIELD_SEQ_NUM, seq_num++);
 		if (res < 0)
-			goto err;
+			goto end;
 
 		// send packet to network
 		n = sendto(fd, pdu, set.pdu_size, 0,
 				(struct sockaddr *) &sk_addr, sizeof(sk_addr));
 		if (n < 0) {
 			perror("Failed to send data");
-			goto err;
+			goto end;
 		}
 
 		if (n != set.pdu_size) {
 			fprintf(stderr, "wrote %zd bytes, expected %zd\n", n, (size_t)set.pdu_size);
 		}
 	}
+	res = 0;
 
+end:
+	//close devices
+	avb_alsa_close(pcm_handle);
 	close(fd);
-	return 0;
-
-err:
-	close(fd);
-	return 1;
+	return -res;
 }
 
 
@@ -453,8 +456,8 @@ static int new_packet(snd_pcm_t *pcm_handle, int sk_fd, int timer_fd, struct sam
 	return 0;
 }
 
-static void play_frame(snd_pcm_t *pcm_handle, struct sample_queue *samples, uint frames);
-static inline void play_frame(snd_pcm_t *pcm_handle, struct sample_queue *samples, uint frames)
+static void play_fragment(snd_pcm_t *pcm_handle, struct sample_queue *samples, uint32_t frames, WavFile *fp);
+static inline void play_fragment(snd_pcm_t *pcm_handle, struct sample_queue *samples, uint32_t frames, WavFile *fp)
 {
 	struct sample_entry *entry;
 
@@ -464,7 +467,8 @@ static inline void play_frame(snd_pcm_t *pcm_handle, struct sample_queue *sample
 	// write to sound card
 	// AAF sample = ALSA frame
 	avb_alsa_write(pcm_handle, entry->pcm_sample, frames);
-
+	if (fp) // write to wav file
+		wav_write(fp, entry->pcm_sample, frames);
 
 	STAILQ_REMOVE_HEAD(samples, entries);
     free(entry->pcm_sample);
@@ -489,26 +493,57 @@ int timeout(int fd, snd_pcm_t *pcm_handle, int data_len, struct sample_queue *sa
 	return 0;
 }
 
-static int setup_session_timer(int timer_fd, struct timespec *end_tspecx, int rec_time)
+static int setup_session_timer(int timer_fd, struct timespec *end_tspec, int rec_time)
 {
 	int res;
-	struct timespec end_tspec;
-	res = clock_gettime(CLOCK_REALTIME, &end_tspec);
+
+	res = clock_gettime(CLOCK_REALTIME, end_tspec);
 	if (res < 0) {
 		perror("Failed to get time from PHC");
 		return -1;
 	}
-	end_tspec.tv_sec += rec_time;
+	end_tspec->tv_sec += rec_time;
 	
-	res = arm_timer(timer_fd, &end_tspec);
+	res = arm_timer(timer_fd, end_tspec);
 	if (res < 0) {
 		perror("Failed to arm session timer");
 		return -1;
 	}
 	return 0;
 }
+
+static int setup_wav_recorder(WavFile **fp, stream_settings_t set)
 {
-int listener(char *ifname, stream_settings_t set, char *adev, int rec_time)
+    *fp = wav_open(TMP_WAV_FILE, WAV_OPEN_WRITE);
+	if (*fp == NULL)
+		return -1;
+	wav_set_format(*fp, (set.bit_depth==32)? WAV_FORMAT_IEEE_FLOAT : WAV_FORMAT_PCM );
+
+    wav_set_sample_size(*fp, ceil(set.bit_depth/8.0));
+
+    wav_set_num_channels(*fp, set.channels);
+    wav_set_sample_rate(*fp, set.sample_rate);
+
+    return 0;
+}
+
+static int close_wav_recorder(WavFile *fp, struct timespec *start, char *filename)
+{
+	struct tm tm;
+	// filename_timestamp.wav
+	char *wav_filename = alloca(strlen(filename) + 31 + strlen(".wav") + 1 );
+	char aux_str[21];
+
+	wav_close(fp);
+
+    gmtime_r(&(start->tv_nsec), &tm);
+	strftime(aux_str, 21, "%Y-%m-%dT%H:%M:%S.", &tm);
+	sprintf(wav_filename, "%s_%s%09luZ", filename, aux_str, start->tv_nsec);
+	
+	return rename(TMP_WAV_FILE, wav_filename);
+}
+
+int listener(char *ifname, stream_settings_t set, char *adev, int rec_time, char *filename)
 {
 	int sk_fd, timer_fd, session_tim_fd, res;
 	struct pollfd fds[3];
@@ -522,7 +557,9 @@ int listener(char *ifname, stream_settings_t set, char *adev, int rec_time)
 	bool is_running = false;
 	struct sample_entry *entry;
 
-	struct timespec end_tspec;
+	WavFile *wav_fp = NULL;
+
+	struct timespec start_tspec, end_tspec;
 
 	sk_fd = create_listener_socket(ifname, macaddr, ETH_P_TSN);
 	if (sk_fd < 0)
@@ -555,12 +592,19 @@ int listener(char *ifname, stream_settings_t set, char *adev, int rec_time)
 
 	print_settings(stdout, set, false);
 
+	if (filename[0] != '\0'){
+		setup_wav_recorder(&wav_fp, set);
+		if (res < 0) {
+			goto end;
+		}
+	}
+
 	//setup session timer
 	if (rec_time){
 		res = setup_session_timer(session_tim_fd, &end_tspec, rec_time);
 		if (res < 0) {
 			perror("Failed to set session timer");
-			goto err;
+			goto end;
 		}
 
 	}
@@ -571,7 +615,7 @@ int listener(char *ifname, stream_settings_t set, char *adev, int rec_time)
 		res = poll(fds, 3, -1);
 		if (res < 0) {
 			perror("Failed to poll() fds");
-			goto err;
+			goto end;
 		}
 
 		// Poll socket
@@ -579,12 +623,12 @@ int listener(char *ifname, stream_settings_t set, char *adev, int rec_time)
 			// new_packet will schedule the frame is the buffer is empty
 			res = new_packet(pcm_handle, sk_fd, timer_fd, &samples, &expected_seq, &set);
 			if (res < 0)
-				goto err;
+				goto end;
 		}
 
 		if (is_running){
 			// write to sound card
-			play_frame(pcm_handle, &samples, set.frames_per_pdu);
+			play_fragment(pcm_handle, &samples, set.frames_per_pdu, wav_fp);
 
 			if (STAILQ_EMPTY(&samples))
 				is_running = false;
@@ -596,9 +640,9 @@ int listener(char *ifname, stream_settings_t set, char *adev, int rec_time)
 
 			res = timeout(timer_fd, pcm_handle, set.data_len, &samples);
 			if (res < 0)
-				goto err;
+				goto end;
 			snd_pcm_prepare(pcm_handle);
-			play_frame(pcm_handle, &samples, set.frames_per_pdu);
+			play_fragment(pcm_handle, &samples, set.frames_per_pdu, wav_fp);
 			if (STAILQ_EMPTY(&samples))
 				is_running = false;
 		}
@@ -610,15 +654,18 @@ int listener(char *ifname, stream_settings_t set, char *adev, int rec_time)
 		}
 
 	}
+
+
+	res = 0;
+
+end:
 	//close devices
+	if (wav_fp)
+		close_wav_recorder(wav_fp, &start_tspec, filename); //TODO: get start_tspec
 	avb_alsa_close(pcm_handle);
-
-	return 0;
-
-err:
 	close(sk_fd);
 	close(timer_fd);
 	close(session_tim_fd);
-	return 1;
+	return -res;
 }
 

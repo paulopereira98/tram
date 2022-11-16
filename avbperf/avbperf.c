@@ -36,6 +36,7 @@ static int priority = 2;
 static int max_transit_time = 100;
 
 static int record_time = 0;
+static char record_file[64] = "";
 
 
 static struct argp_option options[] = {
@@ -52,11 +53,13 @@ static struct argp_option options[] = {
 static struct argp_option options_talker[] = {
 	{"dst-addr"         , 'd', "MACADDR", 0, "Destination MAC address", 11},
 	{"prio"             , 'p', "NUM"    , 0, "SO_PRIORITY to be set in socket (default: 2)", 12},
-	{"max-transit-time" , 'm', "MSEC"   , 0, "Maximum Transit Time in ms (default: 100)", 13},
+	{"max-transit-time" , 'm', "MSEC"   , 0, "Maximum Transit Time in ms. (default: 100)", 13},
 	{ 0 }
 };
 static struct argp_option options_listener[] = {
-	{"time"  			, 't', "s"      , 0, "Run only for n seconds (default = 0 freerun)", 21},
+	{"timeout"  		, 't', "s"      , 0, "Run only for n seconds (default = 0 freerun)", 21},
+	{"file"  			, 'f', "name" 	, 0, "Record audio to file (./<name>.wav)", 22},
+	{"transit-time" 	, 'T', "MSEC"   , 0, "Transit Time in ms, for stats only (must match talker)", 23},
 	{ 0 }
 };
 
@@ -159,8 +162,23 @@ static error_t parser_listener(int key, char *arg, struct argp_state *state)
 	int res;
 
 	switch (key) {
-		case 't': // --time
+		case 'T': // --transit-time
+			max_transit_time = atoi(arg);
+			break;
+
+		case 't': // --timeout
 			record_time = atoi(arg);
+			break;
+			
+		case 'f': // --file
+			strcpy(record_file, arg);
+			break;
+		
+		case ARGP_KEY_END:
+			if(record_file[0]!='\0' && record_time == 0){
+				fprintf(stderr, "Timeout is required when recording a WAV file.\n");
+				exit(EXIT_FAILURE);
+			}
 			break;
 	}
 	return 0;
@@ -208,6 +226,6 @@ int main(int argc, char *argv[])
     if(talker_mode)
         return talker(ifname, macaddr, priority, max_transit_time, settings, device);
     else
-        return listener(ifname, settings, device, record_time);
+        return listener(ifname, settings, device, record_time, record_file);
 
 }
