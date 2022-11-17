@@ -49,6 +49,8 @@ int bit_depth_to_aaf(int bit_depth);
 
 int sample_rate_to_aaf(int sample_rate);
 
+uint64_t avb_aaf_hwlatency_to_ns(stream_settings_t *set);
+
 int talker(char *ifname, uint8_t *macaddr, int priority, stream_settings_t settings, char *adev);
 int listener(char *ifname, stream_settings_t settings, char *adev, int rec_time, char *filename);
 

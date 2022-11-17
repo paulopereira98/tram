@@ -103,7 +103,13 @@ int sample_rate_to_aaf(int sample_rate)
 	return AVTP_AAF_PCM_NSR_48KHZ;
 }
 
-static void print_settings(FILE *file, stream_settings_t set, bool is_talker){
+uint64_t avb_aaf_hwlatency_to_ns(stream_settings_t *set)
+{
+	return ((float)set->hw_latency / set->sample_rate) * NSEC_PER_SEC;
+}
+
+static void print_settings(FILE *file, stream_settings_t set, bool is_talker)
+{
 
 	fprintf(file, "///////////////////////////////////////////////////////\n");
     fprintf(file, "///                    AVB perf                     ///\n");
@@ -117,7 +123,7 @@ static void print_settings(FILE *file, stream_settings_t set, bool is_talker){
 	fprintf(file, "Bit depth   : %d-bit\n", set.bit_depth	);
 	fprintf(file, "Channels    : %d\n", 	set.channels	);
 	fprintf(file, "HW latency  : %d samples\n", set.hw_latency);
-	fprintf(file, "HW latency  : %.2f ms\n\n", (float)set.hw_latency / set.sample_rate * 1000.0f);
+	fprintf(file, "HW latency  : %.2f ms\n\n", avb_aaf_hwlatency_to_ns(&set) / 1000.0f);
 }
 
 static int init_pdu(struct avtp_stream_pdu *pdu, stream_settings_t set)
