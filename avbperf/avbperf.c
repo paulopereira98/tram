@@ -213,6 +213,7 @@ int main(int argc, char *argv[])
 		.pdu_size = pdu_size, 			//this value will be updated later by avb_alsa_setup()
 		.aaf_sample_rate = sample_rate_to_aaf(sample_rate),
 		.aaf_bit_depth = bit_depth_to_aaf(bit_depth),
+		.max_transit_time = max_transit_time,
 		.hw_latency = hw_latency, 		//this value will be updated later by avb_alsa_setup()
 		.frames_per_pdu = hw_latency	//this value will be updated later by avb_alsa_setup()
 	};
@@ -224,7 +225,7 @@ int main(int argc, char *argv[])
 		(i.e.: Left and Right audio channels)
 	*/
     if(talker_mode)
-        return talker(ifname, macaddr, priority, max_transit_time, settings, device);
+        return talker(ifname, macaddr, priority, settings, device);
     else
         return listener(ifname, settings, device, record_time, record_file);
 

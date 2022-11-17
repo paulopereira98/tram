@@ -64,24 +64,18 @@ int calculate_avtp_time(uint32_t *avtp_time, uint32_t max_transit_time)
 	return 0;
 }
 
-int get_presentation_time(uint64_t avtp_time, struct timespec *tspec)
+int get_presentation_time(uint64_t avtp_time, struct timespec *now, struct timespec *presentation)
 {
 	int res;
-	uint64_t ptime, now;
+	uint64_t ptime, now_aux;
 
-	res = clock_gettime(CLOCK_REALTIME, tspec);
-	if (res < 0) {
-		perror("Failed to get time from PHC");
-		return -1;
-	}
-
-	now = (tspec->tv_sec * NSEC_PER_SEC) + tspec->tv_nsec;
+	now_aux = (now->tv_sec * NSEC_PER_SEC) + now->tv_nsec;
 
 	/* The avtp_timestamp within AAF packet is the lower part (32
 	 * less-significant bits) from presentation time calculated by the
 	 * talker.
 	 */
-	ptime = (now & 0xFFFFFFFF00000000ULL) | avtp_time;
+	ptime = (now_aux & 0xFFFFFFFF00000000ULL) | avtp_time;
 
 	/* If 'ptime' is less than the 'now', it means the higher part
 	 * from 'ptime' needs to be incremented by 1 in order to recover the
@@ -92,11 +86,11 @@ int get_presentation_time(uint64_t avtp_time, struct timespec *tspec)
 		ptime += (1ULL << 32);
 	 */
 
-	tspec->tv_sec = ptime / NSEC_PER_SEC;
-	tspec->tv_nsec = ptime % NSEC_PER_SEC;
+	presentation->tv_sec = ptime / NSEC_PER_SEC;
+	presentation->tv_nsec = ptime % NSEC_PER_SEC;
 
 	// flag that the frame is late
-	if (ptime < now)
+	if (ptime < now_aux)
 		return 1;
 
 	return 0;

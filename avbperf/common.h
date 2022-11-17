@@ -47,7 +47,7 @@ int calculate_avtp_time(uint32_t *avtp_time, uint32_t max_transit_time);
  *    0: Success.
  *    -1: If could not get CLOCK_REALTIME.
  */
-int get_presentation_time(uint64_t avtp_time, struct timespec *tspec);
+int get_presentation_time(uint64_t avtp_time, struct timespec *now, struct timespec *presentation);
 
 /* Create TSN socket to listen for incomimg packets.
  * @ifname: Network interface name where to create the socket.

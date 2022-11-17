@@ -42,13 +42,14 @@ typedef struct {
     uint32_t aaf_bit_depth;
     uint32_t hw_latency;
     uint64_t frames_per_pdu;
+    uint32_t max_transit_time;
 }stream_settings_t;
 
 int bit_depth_to_aaf(int bit_depth);
 
 int sample_rate_to_aaf(int sample_rate);
 
-int talker(char *ifname, uint8_t *macaddr, int priority, int max_transit_time, stream_settings_t settings, char *adev);
+int talker(char *ifname, uint8_t *macaddr, int priority, stream_settings_t settings, char *adev);
 int listener(char *ifname, stream_settings_t settings, char *adev, int rec_time, char *filename);
 
 #endif

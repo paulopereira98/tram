@@ -51,6 +51,7 @@
 #include "common.h"
 #include "avb_alsa.h"
 #include "avb_aaf.h"
+#include "avb_stats.h"
 
 #define NSEC_PER_SEC		1000000000ULL
 #define NSEC_PER_MSEC		1000000ULL
@@ -163,7 +164,7 @@ static int init_pdu(struct avtp_stream_pdu *pdu, stream_settings_t set)
 }
 
 
-int talker(char ifname[16], uint8_t macaddr[6], int priority, int max_transit_time, stream_settings_t set, char* adev)
+int talker(char ifname[16], uint8_t macaddr[6], int priority, stream_settings_t set, char* adev)
 {
 	int fd, res;
 	struct sockaddr_ll sk_addr;
@@ -202,7 +203,7 @@ int talker(char ifname[16], uint8_t macaddr[6], int priority, int max_transit_ti
 		// read from device
 		avb_alsa_read(pcm_handle, pdu->avtp_payload, set.frames_per_pdu);
 
-		res = calculate_avtp_time(&avtp_time, max_transit_time);
+		res = calculate_avtp_time(&avtp_time, set.max_transit_time);
 		if (res < 0) {
 			fprintf(stderr, "Failed to calculate avtp time\n");
 			goto end;
@@ -410,13 +411,20 @@ static bool is_valid_packet(struct avtp_stream_pdu *pdu, stream_settings_t *set,
 }
 
 static int new_packet(snd_pcm_t *pcm_handle, int sk_fd, int timer_fd, struct sample_queue *samples, 
-													 uint8_t *expected_seq, stream_settings_t *set)
+								  uint8_t *expected_seq, stream_settings_t *set, avb_stats_t *stats)
 {
 	int res;
 	ssize_t n;
 	uint64_t avtp_time;
-	struct timespec tspec;
+	struct timespec arrival, presentation;
 	struct avtp_stream_pdu *pdu = alloca(set->pdu_size);
+	uint8_t expected_seq_aux;
+
+	res = clock_gettime(CLOCK_REALTIME, &arrival);
+	if (res < 0) {
+		perror("Failed to get time from PHC");
+		return -1;
+	}
 
 	memset(pdu, 0, set->pdu_size);
 
@@ -426,6 +434,7 @@ static int new_packet(snd_pcm_t *pcm_handle, int sk_fd, int timer_fd, struct sam
 		return -1;
 	}
 
+	expected_seq_aux = *expected_seq;
 	if (!is_valid_packet(pdu, set, expected_seq)) {
 		fprintf(stderr, "Dropping packet\n");
 		return 0;
@@ -437,7 +446,7 @@ static int new_packet(snd_pcm_t *pcm_handle, int sk_fd, int timer_fd, struct sam
 		return -1;
 	}
 
-	res = get_presentation_time(avtp_time, &tspec);
+	res = get_presentation_time(avtp_time, &arrival, &presentation);
 	if (res == 1){
 		// if the frame is late and the buffer is empty
 		// discard it and wait for a better one to sync the hardware
@@ -447,9 +456,17 @@ static int new_packet(snd_pcm_t *pcm_handle, int sk_fd, int timer_fd, struct sam
 	else if (res < 0)
 		return -1;
 	
+	res = avb_stats_push(stats, &arrival, &presentation);
+	if (res < 0) {
+		fprintf(stderr, "Failed to push stats\n");
+		return -1;
+	}
+	if (expected_seq_aux++ != *expected_seq){
+		avb_stats_add_dropped(stats, *expected_seq - expected_seq_aux -1);
+	}
 
 	// schedule_sample will only schedule the frame is the buffer is empty
-	res = schedule_sample(timer_fd, &tspec, pdu->avtp_payload, samples, set->data_len);
+	res = schedule_sample(timer_fd, &presentation, pdu->avtp_payload, samples, set->data_len);
 	if (res < 0)
 		return -1;
 
@@ -493,18 +510,18 @@ int timeout(int fd, snd_pcm_t *pcm_handle, int data_len, struct sample_queue *sa
 	return 0;
 }
 
-static int setup_session_timer(int timer_fd, struct timespec *end_tspec, int rec_time)
+static int setup_session_timer(int timer_fd, struct timespec *timeout_tspec, int rec_time)
 {
 	int res;
 
-	res = clock_gettime(CLOCK_REALTIME, end_tspec);
+	res = clock_gettime(CLOCK_REALTIME, timeout_tspec);
 	if (res < 0) {
 		perror("Failed to get time from PHC");
 		return -1;
 	}
-	end_tspec->tv_sec += rec_time;
+	timeout_tspec->tv_sec += rec_time;
 	
-	res = arm_timer(timer_fd, end_tspec);
+	res = arm_timer(timer_fd, timeout_tspec);
 	if (res < 0) {
 		perror("Failed to arm session timer");
 		return -1;
@@ -559,7 +576,11 @@ int listener(char *ifname, stream_settings_t set, char *adev, int rec_time, char
 
 	WavFile *wav_fp = NULL;
 
-	struct timespec start_tspec, end_tspec;
+	avb_stats_t stats;
+	avb_stats_init(&stats);
+	avb_stats_node_t start_stat_node;
+
+	struct timespec start_tspec, timeout_tspec;
 
 	sk_fd = create_listener_socket(ifname, macaddr, ETH_P_TSN);
 	if (sk_fd < 0)
@@ -601,7 +622,7 @@ int listener(char *ifname, stream_settings_t set, char *adev, int rec_time, char
 
 	//setup session timer
 	if (rec_time){
-		res = setup_session_timer(session_tim_fd, &end_tspec, rec_time);
+		res = setup_session_timer(session_tim_fd, &timeout_tspec, rec_time);
 		if (res < 0) {
 			perror("Failed to set session timer");
 			goto end;
@@ -621,7 +642,7 @@ int listener(char *ifname, stream_settings_t set, char *adev, int rec_time, char
 		// Poll socket
 		if (fds[0].revents & POLLIN) {
 			// new_packet will schedule the frame is the buffer is empty
-			res = new_packet(pcm_handle, sk_fd, timer_fd, &samples, &expected_seq, &set);
+			res = new_packet(pcm_handle, sk_fd, timer_fd, &samples, &expected_seq, &set, &stats);
 			if (res < 0)
 				goto end;
 		}
@@ -659,9 +680,18 @@ int listener(char *ifname, stream_settings_t set, char *adev, int rec_time, char
 	res = 0;
 
 end:
+	avb_stats_print_stats(stdout, &stats, &set);
 	//close devices
-	if (wav_fp)
-		close_wav_recorder(wav_fp, &start_tspec, filename); //TODO: get start_tspec
+	if (wav_fp){
+		do{
+			res = avb_stats_get_first(&stats, &start_stat_node);
+			if (res<0)
+				break;
+			avb_stats_get_cap_time(&stats, &start_stat_node, &set, &start_tspec);
+		}while(0);
+		close_wav_recorder(wav_fp, &start_tspec, filename);
+	}
+	avb_stats_clear(&stats);
 	avb_alsa_close(pcm_handle);
 	close(sk_fd);
 	close(timer_fd);

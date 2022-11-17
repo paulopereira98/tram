@@ -31,7 +31,7 @@ all: avbperf
 wav.o: wav.c
 	$(CC) -o $@ -c $(WAV_CFLAGS) $+
 
-avbperf: avbperf.o common.o avb_aaf.o avb_alsa.o wav.o
+avbperf: avbperf.o common.o avb_aaf.o avb_alsa.o avb_stats.o wav.o
 	$(CC) -o $@ $+ $(LDFLAGS) $(LDLIBS)
 
 clean:
