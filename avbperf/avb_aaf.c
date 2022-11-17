@@ -45,7 +45,7 @@
 
 #include <avtp.h>
 #include <avtp_aaf.h>
-#include <wav.h>
+#include "wav.h"
 
 
 #include "common.h"
