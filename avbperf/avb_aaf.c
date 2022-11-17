@@ -417,7 +417,7 @@ static bool is_valid_packet(struct avtp_stream_pdu *pdu, stream_settings_t *set,
 }
 
 static int new_packet(snd_pcm_t *pcm_handle, int sk_fd, int timer_fd, struct sample_queue *samples, 
-								  uint8_t *expected_seq, stream_settings_t *set, avb_stats_t *stats)
+								  uint8_t *expected_seq, stream_settings_t *set, avb_stats_handler_t *stats)
 {
 	int res;
 	ssize_t n;
@@ -582,9 +582,9 @@ int listener(char *ifname, stream_settings_t set, char *adev, int rec_time, char
 
 	WavFile *wav_fp = NULL;
 
-	avb_stats_t stats;
-	avb_stats_init(&stats);
-	avb_stats_node_t start_stat_node;
+	avb_stats_handler_t stats;
+	avb_stats_handler_init(&stats);
+	avb_stats_data_node_t start_stat_node;
 
 	struct timespec start_tspec, timeout_tspec;
 
@@ -686,15 +686,15 @@ int listener(char *ifname, stream_settings_t set, char *adev, int rec_time, char
 	res = 0;
 
 end:
-	avb_stats_print_stats(stdout, &stats, &set);
+	res = avb_stats_process_stats(&stats, &set);
+	if (res == 0)
+		avb_stats_print_stats(stdout, &stats);
+	
 	//close devices
 	if (wav_fp){
-		do{
-			res = avb_stats_get_first(&stats, &start_stat_node);
-			if (res<0)
-				break;
-			avb_stats_get_cap_time(&stats, &start_stat_node, &set, &start_tspec);
-		}while(0);
+		res = avb_stats_get_first(&stats, &start_stat_node);
+		if (res == 0)
+			avb_stats_get_cap_time(&start_stat_node, &set, &start_tspec);
 		close_wav_recorder(wav_fp, &start_tspec, filename);
 	}
 	avb_stats_clear(&stats);
