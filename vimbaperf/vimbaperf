@@ -109,15 +109,24 @@ def setup_camera(cam: Camera, fps: int):
         except (AttributeError, VimbaFeatureError):
             pass
 
+        # get resolution
+        try:
+            width = cam.Width.get()
+            height = cam.Height.get()
+        except (AttributeError, VimbaFeatureError):
+            pass
+    
+    return [width, height]
 
 
 
 
 class Handler:
-    def __init__(self, camname):
+    def __init__(self, camname, video=0):
         self.shutdown_event = threading.Event()
         self.last = 0
         self.camname = camname
+        self.video = video
         
 
     def __call__(self, cam: Camera, frame: Frame):
@@ -163,6 +172,9 @@ class Handler:
                     cv2.waitKey(1)
                     if cv2.getWindowProperty(msg, cv2.WND_PROP_VISIBLE) < 1:
                         self.shutdown_event.set()
+
+                if self.video:
+                    self.video.write(frame_cv2)
 
 
             cam.queue_frame(frame)
@@ -282,12 +294,20 @@ def main():
             cams = vimba.get_all_cameras()
             cam_id = cams[args.index].get_id()
 
+
+    # video handler
+    video = cv2.VideoWriter()
+
     with Vimba.get_instance():
         try:
             with get_camera(cam_id) as cam:
 
-                setup_camera(cam, args.frameRate)
-                handler = Handler(cam.get_name())
+                resolution = setup_camera(cam, args.frameRate)
+
+                # setup video
+                video = cv2.VideoWriter('output.mp4',cv2.VideoWriter_fourcc('m','p','4','v'), 10, resolution)
+                
+                handler = Handler(cam.get_name(), video)
 
                 ptp_status = str(cam.PtpStatus.get())
                 if ptp_status not in ["Slave", "Master"]:
@@ -298,10 +318,20 @@ def main():
                     print(f"Camera {cam.get_name()} synchronized in {ptp_status} mode")
 
                 try:
+                    #set PTP trigger when time % 1s = 0  plus 1 second
+
+                    now = time.time_ns()
+                    #
+                    trigger = now - ( now % 1000000000) + 1000000000
+                    cam.PtpAcquisitionGateTime.set(trigger)
+
                     cam.start_streaming(handler=handler, buffer_count=10)
                     handler.shutdown_event.wait(args.time if args.time else None)
                 finally:
                     cam.stop_streaming()        
+
+                    vimba_c.call_vimba_c("VmbCaptureQueueFlush", cam._Camera__handle)
+                    vimba_c.call_vimba_c("VmbFrameRevokeAll", cam._Camera__handle)
 
                     print_cam_stats(cam) 
 
@@ -309,6 +339,7 @@ def main():
             print("Error: Camera not accessible!")
             return
             
+    video.release()
         
     print_statistics()
 
