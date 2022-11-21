@@ -36,6 +36,7 @@ import sys
 import cv2
 from typing import Optional
 from vimba import *
+from vimba.c_binding import vimba_c
 import argparse
 import statistics
 import time
@@ -82,13 +83,13 @@ def setup_camera(cam: Camera, fps: int):
     #PixelFormat = BayerRG8
     #GainAuto = Continuous
     #ExposureAuto = Off
-    #ExposureTimeAbs = 900000/fps  # useconds * 90%
+    #ExposureTimeAbs = 900000/fps  # useconds * 50%
     
     with cam:
         # Enable auto exposure time setting if camera supports it
         try:
             cam.ExposureAuto.set('Off')
-            cam.ExposureTimeAbs.set(int((0.9*USEC_IN_SEC)/fps))
+            cam.ExposureTimeAbs.set(int((0.5*USEC_IN_SEC)/fps))
             cam.GainAuto.set('Once')
         except (AttributeError, VimbaFeatureError):
             pass
@@ -126,42 +127,45 @@ class Handler:
         if frame.get_status() == FrameStatus.Complete:
             
             local = time.time_ns()
-
-            #thread.start_new_thread( display, (frame) )
             current = frame.get_timestamp()
-            #cam.queue_frame(frame)
+
+            # ignore first frame
+            # somme cameras send the first frame with the wrong timestamp
+            if self.last==0:
+                self.last = current
+                return
+
             cam_stamps.append(current)
             loc_stamps.append(local)
 
-            if not stealth_mode:
-                
-                if self.last==0:
-                    self.last = current
-                delta = current-self.last
+            if (not stealth_mode) or self.video:
 
-                transit = (local - current)/NSEC_IN_MSEC
-
-                fps =  NSEC_IN_SEC/delta if delta else 0
-                #print('{} acquired {} timestamp {} delta {} fps {}'.format(cam, frame, self.last, delta/NSEC_IN_MSEC, fps), flush=True)
-                print('Frame {:4} timestamp {} loc {} transint {:8.2f} delta {:8.4f} fps {:8.4f}'.format(frame.get_id(), current, local, transit, delta/NSEC_IN_MSEC, fps), flush=True)
-                self.last = current
-                
-
-                frame_aux = frame.as_numpy_ndarray()
+                frame_cv2 = frame.as_numpy_ndarray()
                 #frame.convert_pixel_format(PixelFormat.Bgr8)
-                frame_aux = cv2.cvtColor(frame_aux, cv2.COLOR_BAYER_RG2RGB)
+                frame_cv2 = cv2.cvtColor(frame_cv2, cv2.COLOR_BAYER_RG2RGB)
 
-                msg = 'Stream from \'{}\''.format(self.camname)
-                cv2.namedWindow(msg, cv2.WINDOW_NORMAL)
-                cv2.imshow(msg, frame_aux)
+                if not stealth_mode:
+                    
+                    delta = current-self.last
 
-                cv2.waitKey(1)
-                if cv2.getWindowProperty(msg, cv2.WND_PROP_VISIBLE) < 1:
-                    self.shutdown_event.set()
-                    return
+                    transit = (local - current)/NSEC_IN_MSEC
+
+                    fps =  NSEC_IN_SEC/delta if delta else 0
+                    #print('{} acquired {} timestamp {} delta {} fps {}'.format(cam, frame, self.last, delta/NSEC_IN_MSEC, fps), flush=True)
+                    print('Frame {:4} timestamp {} loc {} transint {:8.2f} delta {:8.4f} fps {:8.4f}'.format(
+                        frame.get_id(), current, local, transit, delta/NSEC_IN_MSEC, fps), flush=True)
+                    self.last = current
+
+                    msg = 'Stream from \'{}\''.format(self.camname)
+                    cv2.namedWindow(msg, cv2.WINDOW_NORMAL)
+                    cv2.imshow(msg, frame_cv2)
+
+                    cv2.waitKey(1)
+                    if cv2.getWindowProperty(msg, cv2.WND_PROP_VISIBLE) < 1:
+                        self.shutdown_event.set()
+
 
             cam.queue_frame(frame)
-            #print("end")
 
 
 
@@ -238,6 +242,22 @@ def print_statistics():
     print(f"Delta mean  : {statistics.mean(travel_times)/NSEC_IN_MSEC :10.6f} ms")
     print(f"Delta stdev : {statistics.stdev(travel_times)/NSEC_IN_SEC :10.6f} ms")
 
+def print_cam_stats(cam: Camera):
+    with cam:
+        print("Stat Frame Rate         :", cam.StatFrameRate.get())
+        print("Stat Frames Delivered   :", cam.StatFrameDelivered.get()) 
+        print("Stat Frames Dropped     :", cam.StatFrameDropped.get()) 
+        print("Stat Frames Rescued     :", cam.StatFrameRescued.get())
+        print("Stat Frames Shoved      :", cam.StatFrameShoved.get())
+        print("Stat Frames Underrun    :", cam.StatFrameUnderrun.get())
+        print("Stat Local Rate         :", cam.StatLocalRate.get())    
+        print("Stat Packets Errors     :", cam.StatPacketErrors.get())         
+        print("Stat Packets Missed     :", cam.StatPacketMissed.get())         
+        print("Stat Packets Received   :", cam.StatPacketReceived.get())             
+        print("Stat Packets Requested  :", cam.StatPacketRequested.get())       
+        print("Stat Packets Resent     :", cam.StatPacketResent.get())      
+        print("Stat Packets Unavailable:", cam.StatPacketUnavailable.get())           
+        print("Stat Time Elapsed       :", cam.StatTimeElapsed.get()) 
 
 def main():
     global stealth_mode, cam_stamps, loc_stamps
@@ -280,23 +300,10 @@ def main():
                 try:
                     cam.start_streaming(handler=handler, buffer_count=10)
                     handler.shutdown_event.wait(args.time if args.time else None)
-
                 finally:
-                    cam.stop_streaming()
-                    print("Stat Frame Rate         :", cam.StatFrameRate.get())
-                    print("Stat Frames Delivered   :", cam.StatFrameDelivered.get()) 
-                    print("Stat Frames Dropped     :", cam.StatFrameDropped.get()) 
-                    print("Stat Frames Rescued     :", cam.StatFrameRescued.get())
-                    print("Stat Frames Shoved      :", cam.StatFrameShoved.get())
-                    print("Stat Frames Underrun    :", cam.StatFrameUnderrun.get())
-                    print("Stat Local Rate         :", cam.StatLocalRate.get())    
-                    print("Stat Packets Errors     :", cam.StatPacketErrors.get())         
-                    print("Stat Packets Missed     :", cam.StatPacketMissed.get())         
-                    print("Stat Packets Received   :", cam.StatPacketReceived.get())             
-                    print("Stat Packets Requested  :", cam.StatPacketRequested.get())       
-                    print("Stat Packets Resent     :", cam.StatPacketResent.get())      
-                    print("Stat Packets Unavailable:", cam.StatPacketUnavailable.get())           
-                    print("Stat Time Elapsed       :", cam.StatTimeElapsed.get())     
+                    cam.stop_streaming()        
+
+                    print_cam_stats(cam) 
 
         except (VimbaCameraError):
             print("Error: Camera not accessible!")
