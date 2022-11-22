@@ -325,7 +325,6 @@ def main():
         video_tmp_name = VIDEO_TMP_FILE\
                             + ''.join(random.choice(string.ascii_lowercase) for i in range(10))\
                             + '.mp4'
-        print(video_tmp_name)
 
     with Vimba.get_instance():
         try:
@@ -363,20 +362,24 @@ def main():
                     vimba_c.call_vimba_c("VmbCaptureQueueFlush", cam._Camera__handle)
                     vimba_c.call_vimba_c("VmbFrameRevokeAll", cam._Camera__handle)
 
+                    cam.PtpAcquisitionGateTime.set(0)
+
                     print_cam_stats(cam) 
 
         except (VimbaCameraError):
             print("Error: Camera not accessible!")
             return
     
+    print_statistics(cam_stamps, loc_stamps)
     if(video):
         video.release()
-        start_time = datetime.fromtimestamp(math.floor( cam_stamps[0]/NSEC_IN_SEC ))
+        aux= cam_stamps[0]
+        aux = aux/NSEC_IN_SEC
+        start_time = datetime.fromtimestamp(math.floor( aux ))
         # ISO 8601 format
         timestamp = f'{start_time.isoformat()}.{str(cam_stamps[0]%NSEC_IN_SEC) :9}Z'
         os.rename(video_tmp_name, args.output_file + '_' + timestamp + '.mp4')
         
-    print_statistics(cam_stamps, loc_stamps)
 
 
 
