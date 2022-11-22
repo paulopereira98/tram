@@ -38,13 +38,14 @@ from typing import Optional
 from vimba import *
 from vimba.c_binding import vimba_c
 import argparse
-import statistics
 import time
 from datetime import datetime
 import random
 import string
 import os
 import math
+
+import vimbastats as vs
 
 USEC_IN_SEC = 1000000
 NSEC_IN_SEC = 1000000000
@@ -127,13 +128,12 @@ def setup_camera(cam: Camera, fps: int):
 
 
 class Handler:
-    def __init__(self, camname, stealth_mode, cam_stamps, loc_stamps, video=0):
+    def __init__(self, camname, stealth_mode :bool, stats :vs.Stats, video=0):
         self.shutdown_event = threading.Event()
         self.last = 0
         self.camname = camname
         self.stealth_mode = stealth_mode
-        self.cam_stamps = cam_stamps
-        self.loc_stamps = loc_stamps
+        self.stats = stats
         self.video = video
         
     def __call__(self, cam: Camera, frame: Frame):        
@@ -232,68 +232,82 @@ def setup_parser():
                         help='save stream to video file (name_ISO8601.mp4)')
     return parser
 
-def print_statistics(cam_stamps, loc_stamps):
-    #cam Statistics
-    deltas = [cam_stamps[n]-cam_stamps[n-1] for n in range(1,len(cam_stamps))]
-    fps =  [NSEC_IN_SEC/deltas[n] for n in range(0,len(deltas))]
 
-    print("\nCamera")
-    print(f"    Frame count : {len(cam_stamps)}")
-    print(f"    Delta min   : {min(deltas)/NSEC_IN_MSEC :10.6f} ms")
-    print(f"    Delta max   : {max(deltas)/NSEC_IN_MSEC :10.6f} ms")
-    print(f"    Delta mean  : {statistics.mean(deltas)/NSEC_IN_MSEC :10.6f} ms")
-    print(f"    Delta stdev : {statistics.stdev(deltas)/NSEC_IN_SEC :10.6f} ms")
-    print(f"    Fps min     : {min(fps) :10.6f} fps")
-    print(f"    Fps max     : {max(fps) :10.6f} fps")
-    print(f"    Fps mean    : {statistics.mean(fps)    :10.6f} fps")
-    print(f"    Fps stdev   : {statistics.stdev(fps)   :10.6f} Hz")
+def run_camera():
+   
 
-    #loc Statistics
-    deltas = [loc_stamps[n]-loc_stamps[n-1] for n in range(1,len(loc_stamps))]
-    fps =  [NSEC_IN_SEC/deltas[n] for n in range(0,len(deltas))]
+    
+    if cam_id == "":
+        with Vimba.get_instance() as vimba:
+            cams = vimba.get_all_cameras()
+            cam_id = cams[args.index].get_id()
 
-    print("\nLocal")
-    print(f"    Frame count : {len(loc_stamps)}")
-    print(f"    Delta min   : {min(deltas)/NSEC_IN_MSEC :10.6f} ms")
-    print(f"    Delta max   : {max(deltas)/NSEC_IN_MSEC :10.6f} ms")
-    print(f"    Delta mean  : {statistics.mean(deltas)/NSEC_IN_MSEC :10.6f} ms")
-    print(f"    Delta stdev : {statistics.stdev(deltas)/NSEC_IN_SEC :10.6f} ms")
-    print(f"    Fps min     : {min(fps) :10.6f} fps")
-    print(f"    Fps max     : {max(fps) :10.6f} fps")
-    print(f"    Fps mean    : {statistics.mean(fps)    :10.6f} fps")
-    print(f"    Fps stdev   : {statistics.stdev(fps)   :10.6f} Hz")
 
-    #travel Statistics
-    travel_times = [loc_stamps[n]-cam_stamps[n] for n in range(0,len(cam_stamps))]
+    # video handler
+    video = 0
+    if(args.output_file != ''):
+        video = cv2.VideoWriter()
+        video_tmp_name = VIDEO_TMP_FILE\
+                            + ''.join(random.choice(string.ascii_lowercase) for i in range(10))\
+                            + '.mp4'
 
-    print("\nTravel")
-    print(f"    Frame count : {len(travel_times)}")
-    print(f"    Travel min   : {min(travel_times)/NSEC_IN_MSEC :8.3f} ms")
-    print(f"    Travel max   : {max(travel_times)/NSEC_IN_MSEC :8.3f} ms")
-    print(f"    Travel mean  : {statistics.mean(travel_times)/NSEC_IN_MSEC :8.3f} ms")
-    print(f"    Travel stdev : {statistics.stdev(travel_times)/NSEC_IN_SEC :8.3f} ms")
+    with Vimba.get_instance():
+        try:
+            with get_camera(cam_id) as cam:
 
-def print_cam_stats(cam: Camera):
-    with cam:
-        print("\nCamera Statistics")
-        print(f"    Stat Frame Rate         : {cam.StatFrameRate.get()    :.6f} fps")
-        print(f"    Stat Frames Delivered   : {cam.StatFrameDelivered.get()     }")
-        print(f"    Stat Frames Dropped     : {cam.StatFrameDropped.get()       }")
-        print(f"    Stat Frames Rescued     : {cam.StatFrameRescued.get()       }")
-        print(f"    Stat Frames Shoved      : {cam.StatFrameShoved.get()        }")
-        print(f"    Stat Frames Underrun    : {cam.StatFrameUnderrun.get()      }")
-        print(f"    Stat Local Rate         : {cam.StatLocalRate.get()    :.6f} fps")
-        print(f"    Stat Packets Errors     : {cam.StatPacketErrors.get()       }")    
-        print(f"    Stat Packets Missed     : {cam.StatPacketMissed.get()       }")    
-        print(f"    Stat Packets Received   : {cam.StatPacketReceived.get()     }")          
-        print(f"    Stat Packets Requested  : {cam.StatPacketRequested.get()    }")     
-        print(f"    Stat Packets Resent     : {cam.StatPacketResent.get()       }") 
-        print(f"    Stat Packets Unavailable: {cam.StatPacketUnavailable.get()  }")           
-        print(f"    Stat Time Elapsed       : {cam.StatTimeElapsed.get()        }")
+                resolution = setup_camera(cam, args.frameRate)
+
+                # setup video
+                if(video):
+                    video = cv2.VideoWriter(video_tmp_name, 
+                                            cv2.VideoWriter_fourcc('m','p','4','v'), 10, resolution)
+                
+                handler = Handler(cam.get_name(), args.stealth_mode, cam_stamps, loc_stamps, video)
+
+                ptp_status = str(cam.PtpStatus.get())
+                if ptp_status not in ["Slave", "Master"]:
+                    print(f"Camera {cam.get_name()} not synchronized, PTP status: ", ptp_status)
+                    print(f"Setting PTP mode to Slave")
+                    cam.PtpMode.set("Slave")
+                else:
+                    print(f"Camera {cam.get_name()} synchronized in {ptp_status} mode")
+
+                try:
+                    now = time.time_ns()
+                    #set PTP trigger when time % 1s = 0  plus 1 second
+                    trigger = now - (now % NSEC_IN_SEC) + (2*NSEC_IN_SEC)
+                    delay_s = (trigger - now) / NSEC_IN_SEC
+                    cam.PtpAcquisitionGateTime.set(trigger)
+
+                    cam.start_streaming(handler=handler, buffer_count=10)
+                    handler.shutdown_event.wait(args.time+delay_s if args.time else None)
+                finally:
+                    cam.stop_streaming()        
+
+                    vimba_c.call_vimba_c("VmbCaptureQueueFlush", cam._Camera__handle)
+                    vimba_c.call_vimba_c("VmbFrameRevokeAll", cam._Camera__handle)
+
+                    cam.PtpAcquisitionGateTime.set(0)
+
+                    print_cam_stats(cam) 
+
+        except (VimbaCameraError):
+            print("Error: Camera not accessible!")
+            return
+    
+    print_statistics(cam_stamps, loc_stamps)
+    if(video):
+        video.release()
+        aux= cam_stamps[0]
+        aux = aux/NSEC_IN_SEC
+        start_time = datetime.fromtimestamp(math.floor( aux ))
+        # ISO 8601 format
+        timestamp = f'{start_time.isoformat()}.{str(cam_stamps[0]%NSEC_IN_SEC) :9}Z'
+        os.rename(video_tmp_name, args.output_file + '_' + timestamp + '.mp4')
+
+
 
 def main():
-    cam_stamps = []
-    loc_stamps = []
 
     parser = setup_parser()
     args = parser.parse_args()
@@ -309,9 +323,7 @@ def main():
 
     cam_id = args.cameraID
 
-    cam_stamps.clear()
-    loc_stamps.clear()
-
+    
     if cam_id == "":
         with Vimba.get_instance() as vimba:
             cams = vimba.get_all_cameras()
