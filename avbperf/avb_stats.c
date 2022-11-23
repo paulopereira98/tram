@@ -14,6 +14,12 @@
 #define NSEC_PER_SEC		1000000000ULL
 #define NSEC_PER_MSEC		1000000ULL
 
+
+static uint64_t timespec_to_ns(struct timespec *cap_time)
+{
+    return (uint64_t)(cap_time->tv_sec * NSEC_PER_SEC) + cap_time->tv_nsec;
+}
+
 void avb_stats_handler_init(avb_stats_handler_t *self)
 {
     self->stack_head = NULL;
@@ -46,7 +52,10 @@ void avb_stats_clear(avb_stats_handler_t *self)
 
 void avb_stats_add_dropped(avb_stats_handler_t *self, uint8_t count)
 {
-    self->dropped_packets += count;
+    // If stack is empty, this was the firts packet
+    // Ignore these packets because most likely the talker was initialized before the listener
+    if(self->stack_head)
+        self->dropped_packets += count;
 }
 int avb_stats_push(avb_stats_handler_t *self, struct timespec *arrival, struct timespec *presentation)
 {
@@ -99,7 +108,7 @@ int avb_stats_get_cap_time(avb_stats_data_node_t *node, stream_settings_t *set,
 
     if( !(node||set||cap_time) )
         return -1;
-    capture_ns = (node->presentation.tv_nsec * NSEC_PER_SEC) + node->presentation.tv_nsec;
+    capture_ns = timespec_to_ns(&node->presentation);
     capture_ns -= set->max_transit_time * NSEC_PER_MSEC;
 
     // latency is in samples
@@ -110,11 +119,6 @@ int avb_stats_get_cap_time(avb_stats_data_node_t *node, stream_settings_t *set,
 
     return 0;
 } 
-
-static uint64_t timespec_to_ns(struct timespec *cap_time)
-{
-    return (uint64_t)(cap_time->tv_nsec * NSEC_PER_SEC) + cap_time->tv_nsec;
-}
 
 static void process_stat(uint64_t data_arr[], uint64_t count, avb_stats_stat_t *stat)
 {
@@ -131,7 +135,7 @@ static void process_stat(uint64_t data_arr[], uint64_t count, avb_stats_stat_t *
     //calc means
     stat->mean = stat->mean / count;
 
-    // calc standard eviation.      std = sqrt( sum( (x-mean)^2 ) )
+    // calc standard deviation.      std = sqrt( sum( (x-mean)^2 ) )
     for(int i=0; i<count; i++)
     {
         stat->std += pow(data_arr[i] - stat->mean ,2);
@@ -175,8 +179,11 @@ int avb_stats_process_stats(avb_stats_handler_t *self, stream_settings_t *set)
         current_cap_ns = timespec_to_ns(&current_cap);
 
         //travel = arrival - (capture + hw_latency)
-        travel_arr[entry_index] = timespec_to_ns(&node_ptr->arrival);
+        travel_arr[entry_index] = timespec_to_ns(&(node_ptr->arrival));
         travel_arr[entry_index] -= (current_cap_ns + avb_aaf_hwlatency_to_ns(set));
+        //travel = arrival - (presentation - transit)
+        travel_arr[entry_index] = timespec_to_ns(&(node_ptr->arrival));
+        travel_arr[entry_index] -= ( timespec_to_ns(&(node_ptr->presentation)) - ((uint64_t)set->max_transit_time*NSEC_PER_MSEC) );
 
         // if this is the last node, break. There is no next to calc the delta
         if( node_ptr->next == NULL)
@@ -184,8 +191,9 @@ int avb_stats_process_stats(avb_stats_handler_t *self, stream_settings_t *set)
 
         avb_stats_get_cap_time(node_ptr->next, set, &next_cap);
 
-        //delta_capture = next-curernt
-        delta_cap_arr[entry_index] = timespec_to_ns(&next_cap)-current_cap_ns;
+        //delta_capture = curernt-next
+        //this is a stack, the next was pushed earlier than current node
+        delta_cap_arr[entry_index] = current_cap_ns - timespec_to_ns(&next_cap);
 
         entry_index++;
         node_ptr = node_ptr->next;
@@ -203,16 +211,16 @@ void avb_stats_print_stats(FILE* file, avb_stats_handler_t *self)
     fprintf(file, "Dropped packets : %u\n", self->dropped_packets);
 
     fprintf(file, "\nCapture deltas\n");
-    fprintf(file, "min : %lu\n", self->delta_cap.min );
-    fprintf(file, "max : %lu\n", self->delta_cap.max );
-    fprintf(file, "mean: %lu\n", self->delta_cap.mean);
-    fprintf(file, "std : %lu\n", self->delta_cap.std );
+    fprintf(file, "min : %10.6f ms\n", self->delta_cap.min / (float)NSEC_PER_MSEC);
+    fprintf(file, "max : %10.6f ms\n", self->delta_cap.max / (float)NSEC_PER_MSEC);
+    fprintf(file, "mean: %10.6f ms\n", self->delta_cap.mean/ (float)NSEC_PER_MSEC);
+    fprintf(file, "std : %10.6f ms\n", self->delta_cap.std / (float)NSEC_PER_MSEC);
 
     fprintf(file, "\nTravel times\n");
-    fprintf(file, "min : %lu\n", self->travel.min );
-    fprintf(file, "max : %lu\n", self->travel.max );
-    fprintf(file, "mean: %lu\n", self->travel.mean);
-    fprintf(file, "std : %lu\n", self->travel.std );
+    fprintf(file, "min : %10.6f ms\n", self->travel.min / (float)NSEC_PER_MSEC);
+    fprintf(file, "max : %10.6f ms\n", self->travel.max / (float)NSEC_PER_MSEC);
+    fprintf(file, "mean: %10.6f ms\n", self->travel.mean/ (float)NSEC_PER_MSEC);
+    fprintf(file, "std : %10.6f ms\n", self->travel.std / (float)NSEC_PER_MSEC);
 
     return;
 }

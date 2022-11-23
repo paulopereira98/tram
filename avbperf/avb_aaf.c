@@ -123,7 +123,9 @@ static void print_settings(FILE *file, stream_settings_t set, bool is_talker)
 	fprintf(file, "Bit depth   : %d-bit\n", set.bit_depth	);
 	fprintf(file, "Channels    : %d\n", 	set.channels	);
 	fprintf(file, "HW latency  : %d samples\n", set.hw_latency);
-	fprintf(file, "HW latency  : %.2f ms\n\n", avb_aaf_hwlatency_to_ns(&set) / 1000.0f);
+	fprintf(file, "HW latency  : %.2f ms\n", avb_aaf_hwlatency_to_ns(&set) / (float)NSEC_PER_MSEC);
+	fprintf(file, "End2end lat.: %.2f ms\n\n", 
+				2.0*(avb_aaf_hwlatency_to_ns(&set) / (float)NSEC_PER_MSEC) + set.max_transit_time);
 }
 
 static int init_pdu(struct avtp_stream_pdu *pdu, stream_settings_t set)
@@ -467,8 +469,8 @@ static int new_packet(snd_pcm_t *pcm_handle, int sk_fd, int timer_fd, struct sam
 		fprintf(stderr, "Failed to push stats\n");
 		return -1;
 	}
-	if (expected_seq_aux++ != *expected_seq){
-		avb_stats_add_dropped(stats, *expected_seq - expected_seq_aux -1);
+	if (++expected_seq_aux != *expected_seq){
+		avb_stats_add_dropped(stats, *expected_seq - expected_seq_aux);
 	}
 
 	// schedule_sample will only schedule the frame is the buffer is empty
@@ -559,9 +561,9 @@ static int close_wav_recorder(WavFile *fp, struct timespec *start, char *filenam
 
 	wav_close(fp);
 
-    gmtime_r(&(start->tv_nsec), &tm);
+    gmtime_r(&(start->tv_sec), &tm);
 	strftime(aux_str, 21, "%Y-%m-%dT%H:%M:%S.", &tm);
-	sprintf(wav_filename, "%s_%s%09luZ", filename, aux_str, start->tv_nsec);
+	sprintf(wav_filename, "%s_%s%09luZ.wav", filename, aux_str, start->tv_nsec);
 	
 	return rename(TMP_WAV_FILE, wav_filename);
 }
