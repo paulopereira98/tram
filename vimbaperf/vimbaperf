@@ -276,7 +276,11 @@ def main():
         displayer = FrameDisplayer(frame_queue, cam_objs, args.stealth_mode)
         
         # start FrameGrabber threads
+        now = time.time_ns()
+        #trigger_stamp = now - (now % NSEC_IN_SEC) + (2*NSEC_IN_SEC)
+        trigger_stamp = now + NSEC_IN_SEC # 1 second from now
         for grabber in grabbers.values():
+            grabber.trigger_stamp = trigger_stamp
             grabber.start()
 
         # start and wait for consumer to terminate
