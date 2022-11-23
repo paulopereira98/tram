@@ -31,8 +31,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 
 
-from multiprocessing import Process
-import threading
 import sys
 import cv2
 from typing import Optional
@@ -146,10 +144,6 @@ def setup_camera(cam: Camera, fps: int, decimation:int):
 
 
 
-
-
-
-
 def list_cameras():
 
     with Vimba.get_instance() as vimba:
@@ -195,64 +189,6 @@ def setup_parser():
                         help='save stream to video file (name_id_ISO8601.mp4)')
     return parser
 
-'''
-def run_camera(cam :Camera, str_id:str, stats:vs.Stats, stealth:bool, fps:float, timeout:int, \
-                                        output_filename:str, decimation:int, trigger_stamp:int):
-    print("here", str_id, cam.get_name())
-    # video handler
-    video = 0
-    if(output_filename != ''):
-        video = cv2.VideoWriter()
-        video_tmp_name = VIDEO_TMP_FILE\
-                            + ''.join(random.choice(string.ascii_lowercase) for i in range(10))\
-                            + '.mp4'
-    with cam:
-
-        resolution = setup_camera(cam, fps, decimation)
-        print("here2")
-
-        # setup video
-        if(video):
-            video = cv2.VideoWriter(video_tmp_name, 
-                                    cv2.VideoWriter_fourcc('m','p','4','v'), 10, resolution)
-        
-        handler = vcp.Handler(str_id, stealth, stats, video)
-
-        ptp_status = str(cam.PtpStatus.get())
-        if ptp_status not in ["Slave", "Master"]:
-            print(f"Camera {str_id} not synchronized, PTP status: ", ptp_status)
-            print(f"Camera {str_id}: Setting PTP mode to Slave")
-            cam.PtpMode.set("Slave")
-        else:
-            print(f"Camera {str_id} synchronized in {ptp_status} mode")
-
-        try:
-            now = time.time_ns()
-            delay_s = (trigger_stamp - now) / NSEC_IN_SEC
-            cam.PtpAcquisitionGateTime.set(trigger_stamp)
-
-            cam.start_streaming(handler=handler, buffer_count=10)
-            handler.shutdown_event.wait(timeout+delay_s if timeout else None)
-        finally:
-            cam.stop_streaming()        
-
-            vimba_c.call_vimba_c("VmbCaptureQueueFlush", cam._Camera__handle)
-            vimba_c.call_vimba_c("VmbFrameRevokeAll", cam._Camera__handle)
-
-            cam.PtpAcquisitionGateTime.set(0)
-
-            stats.cam_stats.read(cam)
-
-    if(video):
-        video.release()
-        begin_stamp = stats.cam_stamps[0]
-        aux = begin_stamp/NSEC_IN_SEC
-        start_time = datetime.fromtimestamp(math.floor( aux ))
-        # ISO 8601 format
-        timestamp = f'{start_time.isoformat()}.{str(begin_stamp%NSEC_IN_SEC) :9}Z'
-        os.rename(video_tmp_name, output_filename + '_' + str_id + '_' + timestamp + '.mp4')
-
-'''
 
 def main():
 
