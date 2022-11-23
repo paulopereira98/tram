@@ -35,6 +35,7 @@ class CamStats:
 
     def read(self, cam: Camera):
         with cam:
+            print("getting cam stats", cam.StatFrameRate.get())
             self.StatFrameRate         = cam.StatFrameRate.get()
             self.StatFrameDelivered    = cam.StatFrameDelivered.get()
             self.StatFrameDropped      = cam.StatFrameDropped.get()
@@ -87,6 +88,9 @@ class Stats:
 
     def process(self):
 
+        if len(self.cam_stamps) <= 2:
+            return
+
         self.frame_count = len(self.cam_stamps)
         
         #cam Statistics
@@ -127,8 +131,13 @@ class Stats:
     def print(self, file):
         #file=sys.stdout
 
+        self.cam_stats.print(file)
+
         print(f"\nFrame count : {self.frame_count}", file=file)
 
+        if self.frame_count == 0:
+            return
+            
         print(f"\nCamera")
         print(f"    Delta min   : {self.cam_delta.min  :10.6f} ms", file=file)
         print(f"    Delta max   : {self.cam_delta.max  :10.6f} ms", file=file)

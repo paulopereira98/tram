@@ -31,6 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 
 
+from multiprocessing import Process
 import threading
 import sys
 import cv2
@@ -46,6 +47,7 @@ import os
 import math
 
 import vimbastats as vs
+from vimbacamperf import *
 
 USEC_IN_SEC = 1000000
 NSEC_IN_SEC = 1000000000
@@ -83,14 +85,17 @@ def get_camera(camera_id: Optional[str]) -> Camera:
             return cams[0]
 
 
-def setup_camera(cam: Camera, fps: int):
+def setup_camera(cam: Camera, fps: int, decimation:int):
 
     #AcquisitionFrameRateAbs = fps
     #PixelFormat = BayerRG8
     #GainAuto = Continuous
     #ExposureAuto = Off
     #ExposureTimeAbs = 900000/fps  # useconds * 50%
-    
+
+    # clamp decimation between 1 and 8
+    decimation = decimation if decimation <= 8 else 8
+    decimation = decimation if decimation >  1 else 1
     with cam:
         # Enable auto exposure time setting if camera supports it
         try:
@@ -115,6 +120,20 @@ def setup_camera(cam: Camera, fps: int):
         except (AttributeError, VimbaFeatureError):
             pass
 
+        # resolution
+        try:
+            # set binning or decimation
+            cam.BinningHorizontal.set(decimation)
+            cam.BinningVertical.set(decimation)
+            #cam.DecimationHorizontal.set(decimation)
+            #cam.DecimationVertical.set(decimation)
+
+            # set maximum resolution possible with current binning settings
+            cam.Width.set( cam.WidthMax.get() )
+            cam.Height.set( cam.HeightMax.get() )
+        except (AttributeError, VimbaFeatureError):
+            pass
+
         # get resolution
         try:
             width = cam.Width.get()
@@ -127,65 +146,7 @@ def setup_camera(cam: Camera, fps: int):
 
 
 
-class Handler:
-    def __init__(self, camname, stealth_mode :bool, stats :vs.Stats, video=0):
-        self.shutdown_event = threading.Event()
-        self.last = 0
-        self.camname = camname
-        self.stealth_mode = stealth_mode
-        self.stats = stats
-        self.video = video
-        
-    def __call__(self, cam: Camera, frame: Frame):        
 
-        if frame.get_status() == FrameStatus.Complete:
-            
-            local = time.time_ns()
-            current = frame.get_timestamp()
-
-            # ignore first frame
-            # somme cameras send the first frame with the wrong timestamp
-            if self.last==0:
-                self.last = current
-                if (not self.stealth_mode):
-                    print('Frame        Cam timestamp      Local timestamp '+
-                            'Transint Delta (ms)    FPS'
-                            , flush=True)
-                return
-
-            self.cam_stamps.append(current)
-            self.loc_stamps.append(local)
-
-            if (not self.stealth_mode) or self.video:
-
-                frame_cv2 = frame.as_numpy_ndarray()
-                #frame.convert_pixel_format(PixelFormat.Bgr8)
-                frame_cv2 = cv2.cvtColor(frame_cv2, cv2.COLOR_BAYER_RG2RGB)
-
-                if not self.stealth_mode:
-                    frame_id = frame.get_id()-1
-                    delta = current-self.last if frame_id != 1 else 0
-
-                    transit = (local - current)/NSEC_IN_MSEC
-
-                    fps =  NSEC_IN_SEC/delta if delta else 0
-                    print('{:5} {:20} {:20} {:8.2f} {:8.4f} {:8.04f}'.format( frame_id, 
-                            current, local, transit, delta/NSEC_IN_MSEC, fps), flush=True)
-                    self.last = current
-
-                    msg = 'Stream from \'{}\''.format(self.camname)
-                    cv2.namedWindow(msg, cv2.WINDOW_NORMAL)
-                    cv2.imshow(msg, frame_cv2)
-
-                    cv2.waitKey(1)
-                    if cv2.getWindowProperty(msg, cv2.WND_PROP_VISIBLE) < 1:
-                        self.shutdown_event.set()
-
-                if self.video:
-                    self.video.write(frame_cv2)
-
-
-            cam.queue_frame(frame)
 
 
 
@@ -217,95 +178,81 @@ def list_cameras():
 def setup_parser():
     parser = argparse.ArgumentParser(description='Vimba tester.')
     parser.add_argument('-l', "--list", dest='list_mode', action="store_true",
-                        help='list cameras')
+                        help='List cameras')
     parser.add_argument('-s', "--stealth", dest='stealth_mode', action="store_true",
-                        help='stealth mode, does\'t display video (saves cpu)')
-    parser.add_argument('-f', "--frameRate", default=10, type=int, 
-                        help='target framerate (default 10 fps)')
-    parser.add_argument('-c', "--cameraID", default="", type=str, metavar='ID',
-                        help='camera id (overrides index)')
-    parser.add_argument('-i', "--index", default=0, type=int, metavar='#',
-                        help='camera index (default 0)')
+                        help='Stealth mode, does\'t display video (saves cpu)')
+    parser.add_argument('-f', "--frameRate", default=10, type=float, metavar='FPS', 
+                        help='Target framerate (default 10 fps)')
+    parser.add_argument('-d', "--decimation", default=1, type=int, metavar='FACTOR', 
+                        help='On-camera image decimation factor. between 1 and 8 (default = 1)')
+    parser.add_argument('-c', "--cameraID", default=[], type=str, metavar='ID', action='append',
+                        help='Camera id. More than one can be used (ex: -c id0 -c id1)')
+    parser.add_argument('-i', "--index", default=[], type=int, metavar='#', action='append',
+                        help='Camera index (default 0). More than one can be used (ex: -i0 -i1)')
     parser.add_argument('-t', "--time", default=0, type=int, metavar='s',
-                        help='duration in time (default = 0 freerun)')
-    parser.add_argument('-o', "--output_file", default="", type=str, metavar='name',
-                        help='save stream to video file (name_ISO8601.mp4)')
+                        help='Duration in time (default = 0 freerun)')
+    parser.add_argument('-o', "--outputFile", default="", type=str, metavar='name',
+                        help='save stream to video file (name_id_ISO8601.mp4)')
     return parser
 
-
-def run_camera():
-   
-
-    
-    if cam_id == "":
-        with Vimba.get_instance() as vimba:
-            cams = vimba.get_all_cameras()
-            cam_id = cams[args.index].get_id()
-
-
+'''
+def run_camera(cam :Camera, str_id:str, stats:vs.Stats, stealth:bool, fps:float, timeout:int, \
+                                        output_filename:str, decimation:int, trigger_stamp:int):
+    print("here", str_id, cam.get_name())
     # video handler
     video = 0
-    if(args.output_file != ''):
+    if(output_filename != ''):
         video = cv2.VideoWriter()
         video_tmp_name = VIDEO_TMP_FILE\
                             + ''.join(random.choice(string.ascii_lowercase) for i in range(10))\
                             + '.mp4'
+    with cam:
 
-    with Vimba.get_instance():
+        resolution = setup_camera(cam, fps, decimation)
+        print("here2")
+
+        # setup video
+        if(video):
+            video = cv2.VideoWriter(video_tmp_name, 
+                                    cv2.VideoWriter_fourcc('m','p','4','v'), 10, resolution)
+        
+        handler = vcp.Handler(str_id, stealth, stats, video)
+
+        ptp_status = str(cam.PtpStatus.get())
+        if ptp_status not in ["Slave", "Master"]:
+            print(f"Camera {str_id} not synchronized, PTP status: ", ptp_status)
+            print(f"Camera {str_id}: Setting PTP mode to Slave")
+            cam.PtpMode.set("Slave")
+        else:
+            print(f"Camera {str_id} synchronized in {ptp_status} mode")
+
         try:
-            with get_camera(cam_id) as cam:
+            now = time.time_ns()
+            delay_s = (trigger_stamp - now) / NSEC_IN_SEC
+            cam.PtpAcquisitionGateTime.set(trigger_stamp)
 
-                resolution = setup_camera(cam, args.frameRate)
+            cam.start_streaming(handler=handler, buffer_count=10)
+            handler.shutdown_event.wait(timeout+delay_s if timeout else None)
+        finally:
+            cam.stop_streaming()        
 
-                # setup video
-                if(video):
-                    video = cv2.VideoWriter(video_tmp_name, 
-                                            cv2.VideoWriter_fourcc('m','p','4','v'), 10, resolution)
-                
-                handler = Handler(cam.get_name(), args.stealth_mode, cam_stamps, loc_stamps, video)
+            vimba_c.call_vimba_c("VmbCaptureQueueFlush", cam._Camera__handle)
+            vimba_c.call_vimba_c("VmbFrameRevokeAll", cam._Camera__handle)
 
-                ptp_status = str(cam.PtpStatus.get())
-                if ptp_status not in ["Slave", "Master"]:
-                    print(f"Camera {cam.get_name()} not synchronized, PTP status: ", ptp_status)
-                    print(f"Setting PTP mode to Slave")
-                    cam.PtpMode.set("Slave")
-                else:
-                    print(f"Camera {cam.get_name()} synchronized in {ptp_status} mode")
+            cam.PtpAcquisitionGateTime.set(0)
 
-                try:
-                    now = time.time_ns()
-                    #set PTP trigger when time % 1s = 0  plus 1 second
-                    trigger = now - (now % NSEC_IN_SEC) + (2*NSEC_IN_SEC)
-                    delay_s = (trigger - now) / NSEC_IN_SEC
-                    cam.PtpAcquisitionGateTime.set(trigger)
+            stats.cam_stats.read(cam)
 
-                    cam.start_streaming(handler=handler, buffer_count=10)
-                    handler.shutdown_event.wait(args.time+delay_s if args.time else None)
-                finally:
-                    cam.stop_streaming()        
-
-                    vimba_c.call_vimba_c("VmbCaptureQueueFlush", cam._Camera__handle)
-                    vimba_c.call_vimba_c("VmbFrameRevokeAll", cam._Camera__handle)
-
-                    cam.PtpAcquisitionGateTime.set(0)
-
-                    print_cam_stats(cam) 
-
-        except (VimbaCameraError):
-            print("Error: Camera not accessible!")
-            return
-    
-    print_statistics(cam_stamps, loc_stamps)
     if(video):
         video.release()
-        aux= cam_stamps[0]
-        aux = aux/NSEC_IN_SEC
+        begin_stamp = stats.cam_stamps[0]
+        aux = begin_stamp/NSEC_IN_SEC
         start_time = datetime.fromtimestamp(math.floor( aux ))
         # ISO 8601 format
-        timestamp = f'{start_time.isoformat()}.{str(cam_stamps[0]%NSEC_IN_SEC) :9}Z'
-        os.rename(video_tmp_name, args.output_file + '_' + timestamp + '.mp4')
+        timestamp = f'{start_time.isoformat()}.{str(begin_stamp%NSEC_IN_SEC) :9}Z'
+        os.rename(video_tmp_name, output_filename + '_' + str_id + '_' + timestamp + '.mp4')
 
-
+'''
 
 def main():
 
@@ -320,80 +267,141 @@ def main():
         print("Timeout is required when running in stealth mode")
         return -1
 
+    cam_ids :list
+    cam_indexes :list
+    cam_ids = args.cameraID
+    cam_indexes = args.index
 
-    cam_id = args.cameraID
+    cam_objs :list[CamPerf] = []
 
-    
-    if cam_id == "":
-        with Vimba.get_instance() as vimba:
-            cams = vimba.get_all_cameras()
-            cam_id = cams[args.index].get_id()
+    with Vimba.get_instance() as vimba:
+
+        if ( len(cam_ids) + len(cam_indexes) ) == 0:
+            cam_indexes.append(0)
+
+        # add cameras by id
+        for id in cam_ids:
+            cam_obj = CamPerf(vimba.get_camera_by_id(id), id)
+            cam_objs.append(cam_obj)
+        
+        # add cameras by index
+        if len(cam_indexes) != 0:
+            aux_cams = vimba.get_all_cameras()
+            for index in cam_indexes:
+                auxcam = aux_cams[index]
+                cam_obj = CamPerf(auxcam, auxcam.get_name() + '-' + str(index))
+                cam_objs.append(cam_obj)
 
 
-    # video handler
-    video = 0
-    if(args.output_file != ''):
-        video = cv2.VideoWriter()
-        video_tmp_name = VIDEO_TMP_FILE\
-                            + ''.join(random.choice(string.ascii_lowercase) for i in range(10))\
-                            + '.mp4'
 
-    with Vimba.get_instance():
-        try:
-            with get_camera(cam_id) as cam:
 
-                resolution = setup_camera(cam, args.frameRate)
+        # setup cameras
+        for cam_obj in cam_objs:
+
+            # create video
+            if(args.outputFile != ''):
+                cam_obj.video_tmp_name = VIDEO_TMP_FILE\
+                                + ''.join(random.choice(string.ascii_lowercase) for _ in range(10))\
+                                + '.mp4'
+                cam_obj.video = cv2.VideoWriter()
+
+
+            with cam_obj.cam as cam:
+
+                resolution = setup_camera(cam, args.frameRate, args.decimation)
 
                 # setup video
-                if(video):
-                    video = cv2.VideoWriter(video_tmp_name, 
+                if(cam_obj.video):
+                    cam_obj.video = cv2.VideoWriter(cam_obj.video_tmp_name, 
                                             cv2.VideoWriter_fourcc('m','p','4','v'), 10, resolution)
                 
-                handler = Handler(cam.get_name(), args.stealth_mode, cam_stamps, loc_stamps, video)
+                cam_obj.frameHandler = Handler(cam_obj.cam_str_id, args.stealth_mode, 
+                                                        cam_obj.stats, cam_obj.video)
 
                 ptp_status = str(cam.PtpStatus.get())
                 if ptp_status not in ["Slave", "Master"]:
-                    print(f"Camera {cam.get_name()} not synchronized, PTP status: ", ptp_status)
-                    print(f"Setting PTP mode to Slave")
+                    print(f"Camera {cam_obj.cam_str_id} not synchronized, PTP status: ", ptp_status)
+                    print(f"Camera {cam_obj.cam_str_id}: Setting PTP mode to Slave")
                     cam.PtpMode.set("Slave")
                 else:
-                    print(f"Camera {cam.get_name()} synchronized in {ptp_status} mode")
+                    print(f"Camera {cam_obj.cam_str_id} synchronized in {ptp_status} mode")
 
-                try:
-                    now = time.time_ns()
-                    #set PTP trigger when time % 1s = 0  plus 1 second
-                    trigger = now - (now % NSEC_IN_SEC) + (2*NSEC_IN_SEC)
-                    delay_s = (trigger - now) / NSEC_IN_SEC
-                    cam.PtpAcquisitionGateTime.set(trigger)
 
+        #set PTP trigger when time % 1s = 0  plus 2 seconds
+        now = time.time_ns()
+        trigger_stamp = now - (now % NSEC_IN_SEC) + (2*NSEC_IN_SEC)
+        delay_s = (trigger_stamp - now) / NSEC_IN_SEC
+        timeout = args.time + delay_s if args.time else None
+
+        try:
+            for cam_obj in cam_objs:
+                handler = cam_obj.frameHandler
+                with cam_obj.cam as cam:
+                    cam.PtpAcquisitionGateTime.set(trigger_stamp)
                     cam.start_streaming(handler=handler, buffer_count=10)
-                    handler.shutdown_event.wait(args.time+delay_s if args.time else None)
-                finally:
-                    cam.stop_streaming()        
+                    time.sleep(timeout)
 
+
+
+            #cam_objs[0].frameHandler.shutdown_event.wait(timeout)
+        finally:
+            for cam_obj in cam_objs:
+                with cam_obj.cam as cam:
+                    cam.stop_streaming()        
+                    cam_obj.stats.cam_stats.read(cam)
+
+            for cam_obj in cam_objs:
+                with cam_obj.cam as cam:
+                    
                     vimba_c.call_vimba_c("VmbCaptureQueueFlush", cam._Camera__handle)
                     vimba_c.call_vimba_c("VmbFrameRevokeAll", cam._Camera__handle)
 
                     cam.PtpAcquisitionGateTime.set(0)
 
-                    print_cam_stats(cam) 
 
-        except (VimbaCameraError):
-            print("Error: Camera not accessible!")
-            return
+    #close video
+    for cam_obj in cam_objs:
+        if(cam_obj.video):
+            cam_obj.video.release()
+            begin_stamp = cam_obj.stats.cam_stamps[0]
+            aux = begin_stamp/NSEC_IN_SEC
+            start_time = datetime.fromtimestamp(math.floor( aux ))
+            # ISO 8601 format
+            timestamp = f'{start_time.isoformat()}.{str(begin_stamp%NSEC_IN_SEC) :9}Z'
+            os.rename(cam_obj.video_tmp_name, 
+                        args.outputFile + '_' + cam_obj.cam_str_id + '_' + timestamp + '.mp4')
+
+
+        '''
+        p_list :list[Process] = []
+        for i in range(0, len(cams)):
+            stats.append(vs.Stats())
+            p_list.append( 
+                Process(target=run_camera, args=( 
+                    cams[i], cam_str_ids[i], stats[i], args.stealth_mode, args.frameRate, 
+                    args.time, args.outputFile, args.decimation, trigger_stamp)
+                )
+            ) 
+        #try:
+
+        for p in p_list:
+            with cams[0]:
+                p.start()
+        for p in p_list:
+            p.join()
     
-    print_statistics(cam_stamps, loc_stamps)
-    if(video):
-        video.release()
-        aux= cam_stamps[0]
-        aux = aux/NSEC_IN_SEC
-        start_time = datetime.fromtimestamp(math.floor( aux ))
-        # ISO 8601 format
-        timestamp = f'{start_time.isoformat()}.{str(cam_stamps[0]%NSEC_IN_SEC) :9}Z'
-        os.rename(video_tmp_name, args.output_file + '_' + timestamp + '.mp4')
+        #except (VimbaCameraError):
+        #    print("Error: Camera not accessible!")
+        #    return
+        '''
+
+    #print stats:
+    for cam_obj in cam_objs:
+        print(f'///////////////////{cam_obj.cam_str_id :^16}////////////////////')
+        cam_obj.stats.process()
+        cam_obj.stats.print(sys.stdout)
+
         
-
-
 
 if __name__ == '__main__':
     main()
