@@ -267,22 +267,25 @@ def main():
         print("Timeout is required when running in stealth mode")
         return -1
 
-    cam_ids :list
-    cam_indexes :list
-    cam_ids = args.cameraID
-    cam_indexes = args.index
+    cam_ids :list = args.cameraID
+    cam_indexes :list = args.index
 
-    cam_objs :list[CamPerf] = []
+    cam_objs :dict[CamPerf] = {}
+
+    grabbers :dict[FrameGrabber] = {}
+    frame_queue = queue.Queue(maxsize=FRAME_QUEUE_SIZE)
+
 
     with Vimba.get_instance() as vimba:
 
+        # if no camera specified, use index 0
         if ( len(cam_ids) + len(cam_indexes) ) == 0:
             cam_indexes.append(0)
 
         # add cameras by id
         for id in cam_ids:
             cam_obj = CamPerf(vimba.get_camera_by_id(id), id)
-            cam_objs.append(cam_obj)
+            cam_objs[cam_obj.cam_str_id] = cam_obj
         
         # add cameras by index
         if len(cam_indexes) != 0:
@@ -290,15 +293,14 @@ def main():
             for index in cam_indexes:
                 auxcam = aux_cams[index]
                 cam_obj = CamPerf(auxcam, auxcam.get_name() + '-' + str(index))
-                cam_objs.append(cam_obj)
-
-
+                cam_objs[cam_obj.cam_str_id] = cam_obj
 
 
         # setup cameras
-        for cam_obj in cam_objs:
+        for cam_obj in cam_objs.values():
 
             # create video
+            cam_obj.video = 0
             if(args.outputFile != ''):
                 cam_obj.video_tmp_name = VIDEO_TMP_FILE\
                                 + ''.join(random.choice(string.ascii_lowercase) for _ in range(10))\
@@ -315,9 +317,6 @@ def main():
                     cam_obj.video = cv2.VideoWriter(cam_obj.video_tmp_name, 
                                             cv2.VideoWriter_fourcc('m','p','4','v'), 10, resolution)
                 
-                cam_obj.frameHandler = Handler(cam_obj.cam_str_id, args.stealth_mode, 
-                                                        cam_obj.stats, cam_obj.video)
-
                 ptp_status = str(cam.PtpStatus.get())
                 if ptp_status not in ["Slave", "Master"]:
                     print(f"Camera {cam_obj.cam_str_id} not synchronized, PTP status: ", ptp_status)
@@ -325,79 +324,48 @@ def main():
                     cam.PtpMode.set("Slave")
                 else:
                     print(f"Camera {cam_obj.cam_str_id} synchronized in {ptp_status} mode")
+        
+
+            # create frame grabber threads
+            grabbers[cam_obj.cam_str_id] = FrameGrabber(cam_obj, frame_queue, 
+                                                        args.stealth_mode, args.time)
+
+        # create frame displayer thread
+        displayer = FrameDisplayer(frame_queue, cam_objs, args.stealth_mode)
+        
+        # start FrameGrabber threads
+        for grabber in grabbers.values():
+            grabber.start()
+
+        # start and wait for consumer to terminate
+        displayer.start()
+        displayer.join()
+
+        # Stop all FrameGrabber threads
+        for grabber in grabbers.values():
+            grabber.stop()
+
+        # Wait for shutdown to complete
+        for grabber in grabbers.values():
+            grabber.join()
 
 
-        #set PTP trigger when time % 1s = 0  plus 2 seconds
-        now = time.time_ns()
-        trigger_stamp = now - (now % NSEC_IN_SEC) + (2*NSEC_IN_SEC)
-        delay_s = (trigger_stamp - now) / NSEC_IN_SEC
-        timeout = args.time + delay_s if args.time else None
-
-        try:
-            for cam_obj in cam_objs:
-                handler = cam_obj.frameHandler
-                with cam_obj.cam as cam:
-                    cam.PtpAcquisitionGateTime.set(trigger_stamp)
-                    cam.start_streaming(handler=handler, buffer_count=10)
-                    time.sleep(timeout)
-
-
-
-            #cam_objs[0].frameHandler.shutdown_event.wait(timeout)
-        finally:
-            for cam_obj in cam_objs:
-                with cam_obj.cam as cam:
-                    cam.stop_streaming()        
-                    cam_obj.stats.cam_stats.read(cam)
-
-            for cam_obj in cam_objs:
-                with cam_obj.cam as cam:
-                    
-                    vimba_c.call_vimba_c("VmbCaptureQueueFlush", cam._Camera__handle)
-                    vimba_c.call_vimba_c("VmbFrameRevokeAll", cam._Camera__handle)
-
-                    cam.PtpAcquisitionGateTime.set(0)
-
-
-    #close video
-    for cam_obj in cam_objs:
-        if(cam_obj.video):
-            cam_obj.video.release()
-            begin_stamp = cam_obj.stats.cam_stamps[0]
-            aux = begin_stamp/NSEC_IN_SEC
-            start_time = datetime.fromtimestamp(math.floor( aux ))
-            # ISO 8601 format
-            timestamp = f'{start_time.isoformat()}.{str(begin_stamp%NSEC_IN_SEC) :9}Z'
-            os.rename(cam_obj.video_tmp_name, 
-                        args.outputFile + '_' + cam_obj.cam_str_id + '_' + timestamp + '.mp4')
-
-
-        '''
-        p_list :list[Process] = []
-        for i in range(0, len(cams)):
-            stats.append(vs.Stats())
-            p_list.append( 
-                Process(target=run_camera, args=( 
-                    cams[i], cam_str_ids[i], stats[i], args.stealth_mode, args.frameRate, 
-                    args.time, args.outputFile, args.decimation, trigger_stamp)
-                )
-            ) 
-        #try:
-
-        for p in p_list:
-            with cams[0]:
-                p.start()
-        for p in p_list:
-            p.join()
-    
-        #except (VimbaCameraError):
-        #    print("Error: Camera not accessible!")
-        #    return
-        '''
+        #close video
+        for cam_obj in cam_objs.values():
+            if(cam_obj.video):
+                cam_obj.video.release()
+                begin_stamp = cam_obj.stats.cam_stamps[0]
+                aux = begin_stamp/NSEC_IN_SEC
+                start_time = datetime.fromtimestamp(math.floor( aux ))
+                # ISO 8601 format
+                timestamp = f'{start_time.isoformat()}.{str(begin_stamp%NSEC_IN_SEC) :9}Z'
+                os.rename(cam_obj.video_tmp_name, 
+                            args.outputFile + '_' + cam_obj.cam_str_id + '_' + timestamp + '.mp4')
+                            
 
     #print stats:
-    for cam_obj in cam_objs:
-        print(f'///////////////////{cam_obj.cam_str_id :^16}////////////////////')
+    for cam_obj in cam_objs.values():
+        print(f'\n///////////////////{cam_obj.cam_str_id :^16}////////////////////')
         cam_obj.stats.process()
         cam_obj.stats.print(sys.stdout)
 

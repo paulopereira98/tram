@@ -35,7 +35,6 @@ class CamStats:
 
     def read(self, cam: Camera):
         with cam:
-            print("getting cam stats", cam.StatFrameRate.get())
             self.StatFrameRate         = cam.StatFrameRate.get()
             self.StatFrameDelivered    = cam.StatFrameDelivered.get()
             self.StatFrameDropped      = cam.StatFrameDropped.get()
@@ -85,6 +84,9 @@ class Stats:
 
         self.cam_stats = CamStats()
 
+    def append(self, locStamp, camStamp):
+        self.cam_stamps.append(camStamp)
+        self.loc_stamps.append(locStamp)
 
     def process(self):
 
