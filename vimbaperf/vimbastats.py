@@ -165,3 +165,4 @@ class Stats:
         print(f"    Travel max  : {self.travel.max  :8.3f} ms", file=file)
         print(f"    Travel mean : {self.travel.mean :8.3f} ms", file=file)
         print(f"    Travel stdev: {self.travel.std  :8.3f} ms", file=file)
+        
