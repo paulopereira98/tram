@@ -118,13 +118,13 @@ static void print_settings(FILE *file, stream_settings_t set, bool is_talker)
 				  "///                AAF Listener Node                ///\n");
     fprintf(file, "///////////////////////////////////////////////////////\n\n");
 
-	fprintf(file, "Stream ID   : %16lX\n", 	set.stream_id	);
-	fprintf(file, "Sample rate : %d Hz\n", 	set.sample_rate	);
-	fprintf(file, "Bit depth   : %d-bit\n", set.bit_depth	);
-	fprintf(file, "Channels    : %d\n", 	set.channels	);
-	fprintf(file, "HW latency  : %d samples\n", set.hw_latency);
-	fprintf(file, "HW latency  : %.2f ms\n", avb_aaf_hwlatency_to_ns(&set) / (float)NSEC_PER_MSEC);
-	fprintf(file, "End2end lat.: %.2f ms\n\n", 
+	fprintf(file, "Stream ID       : %16lX\n", 	set.stream_id	);
+	fprintf(file, "Sample rate     : %d Hz\n", 	set.sample_rate	);
+	fprintf(file, "Bit depth       : %d-bit\n", set.bit_depth	);
+	fprintf(file, "Channels        : %d\n", 	set.channels	);
+	fprintf(file, "HW latency      : %d samples\n", set.hw_latency);
+	fprintf(file, "HW latency      : %.2f ms\n", avb_aaf_hwlatency_to_ns(&set) / (float)NSEC_PER_MSEC);
+	fprintf(file, "Analog e2e lat. : %.2f ms\n\n", 
 				2.0*(avb_aaf_hwlatency_to_ns(&set) / (float)NSEC_PER_MSEC) + set.max_transit_time);
 }
 
@@ -253,7 +253,7 @@ static int schedule_sample(int fd, struct timespec *tspec, uint8_t *pcm_sample,
 									struct sample_queue *samples, int data_len)
 {
 	struct sample_entry *entry;
-	int res;
+	int res = 0;
 
 	entry = malloc(sizeof(*entry));
 	if (!entry) {
@@ -464,13 +464,14 @@ static int new_packet(snd_pcm_t *pcm_handle, int sk_fd, int timer_fd, struct sam
 	else if (res < 0)
 		return -1;
 	
+	if (++expected_seq_aux != *expected_seq){
+		avb_stats_add_dropped(stats, *expected_seq - expected_seq_aux);
+	}
+
 	res = avb_stats_push(stats, &arrival, &presentation);
 	if (res < 0) {
 		fprintf(stderr, "Failed to push stats\n");
 		return -1;
-	}
-	if (++expected_seq_aux != *expected_seq){
-		avb_stats_add_dropped(stats, *expected_seq - expected_seq_aux);
 	}
 
 	// schedule_sample will only schedule the frame is the buffer is empty
@@ -503,7 +504,6 @@ static inline void play_fragment(snd_pcm_t *pcm_handle, struct sample_queue *sam
 
 int timeout(int fd, snd_pcm_t *pcm_handle, int data_len, struct sample_queue *samples)
 {
-	int res;
 	ssize_t n;
 	uint64_t expirations;
 	//struct sample_entry *entry;
