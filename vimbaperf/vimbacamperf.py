@@ -122,7 +122,7 @@ class FrameGrabber(threading.Thread):
             pass
 
         finally:
-            self.try_put_frame(np.array(False))
+            self.try_put_frame(None)
 
 
 class FrameDisplayer(threading.Thread):
@@ -156,7 +156,7 @@ class FrameDisplayer(threading.Thread):
                 if frame:
                     video = self.camObjs[cam_str_id].video
                     if (not self.stealth_mode) or video:
-                        frame_cv2 = frame#.as_numpy_ndarray()
+                        frame_cv2 = frame.as_numpy_ndarray()
                         #frame.convert_pixel_format(PixelFormat.Bgr8)
                         frame_cv2 = cv2.cvtColor(frame_cv2, cv2.COLOR_BAYER_RG2RGB)
 
