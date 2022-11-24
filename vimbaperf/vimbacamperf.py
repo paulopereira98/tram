@@ -1,5 +1,4 @@
 import threading
-import multiprocessing as mp
 import typing
 import cv2
 from typing import Optional
@@ -7,8 +6,8 @@ from vimba import *
 from vimba.c_binding import vimba_c
 import time
 import copy
-#import queue
-import numpy as np
+import queue
+
 import vimbastats as vs
 
 USEC_IN_SEC = 1000000
@@ -19,8 +18,10 @@ FRAME_QUEUE_SIZE = 50
 
 
 
-class CamPerf():
+class CamPerf(threading.Thread):
     def __init__(self, cam:Camera, str_id:str):
+        threading.Thread.__init__(self)
+
         self.cam = cam
         self.cam_str_id = str_id
 
@@ -31,9 +32,10 @@ class CamPerf():
 
 
 class FrameGrabber(threading.Thread):
-    def __init__(self, camObj: CamPerf, frameQueue: mp.Queue, stealth :bool, time :int):
+    def __init__(self, camObj: CamPerf, frameQueue: queue.Queue, stealth :bool, time :int):
         threading.Thread.__init__(self)
 
+        #self.cam = camObj.cam
         self.camObj = camObj
         self.frameQueue = frameQueue
         self.stealth = stealth
@@ -64,8 +66,8 @@ class FrameGrabber(threading.Thread):
 
             #queue the frame
             if not self.frameQueue.full():
-                #frame_cpy = copy.deepcopy(frame)
-                self.try_put_frame(frame.as_numpy_ndarray())
+                frame_cpy = copy.deepcopy(frame)
+                self.try_put_frame(frame_cpy)
 
             # store stats
             self.camObj.stats.append(localTime, currentTime)
@@ -80,13 +82,16 @@ class FrameGrabber(threading.Thread):
                 print('{:7} {:5} {:20} {:20} {:8.2f} {:8.4f} {:8.04f}'.format(
                         self.camObj.cam_str_id, frame_id, currentTime, localTime, transit, 
                         delta/NSEC_IN_MSEC, fps), flush=True)
-                self.last = currentTime
+                self.lastTime = currentTime
 
         cam.queue_frame(frame)
 
-    def try_put_frame(self, frame: Optional[np.ndarray]):
-        if not self.frameQueue.full():
+    def try_put_frame(self, frame: Optional[Frame]):
+        try:
             self.frameQueue.put_nowait((self.camObj.cam_str_id, frame))
+
+        except queue.Full:
+            pass
 
     def stop(self):
         self.shutdown_event.set()
@@ -97,7 +102,7 @@ class FrameGrabber(threading.Thread):
         now = time.time_ns()
         delay_s = (self.trigger_stamp - now) / NSEC_IN_SEC if self.trigger_stamp else 0
         timeout = self.time + delay_s if self.time else None
-        
+
         try:
             with self.camObj.cam as cam:
                 try:
@@ -120,42 +125,38 @@ class FrameGrabber(threading.Thread):
             self.try_put_frame(None)
 
 
-class FrameDisplayer():
-    def __init__(self, frame_queue: mp.Queue, camObjs :typing.Dict[str, float], stealth :bool):
+class FrameDisplayer(threading.Thread):
+    def __init__(self, frame_queue: queue.Queue, camObjs :typing.Dict[str, float], stealth :bool):
+        threading.Thread.__init__(self)
+
+        self.log = Log.get_instance()
         self.frame_queue = frame_queue
         self.camObjs = camObjs
         self.stealth_mode = stealth
-
-        self.process = mp.Process(target=self.run)
-    
-    def start(self):
-        self.process.start()
-    def join(self):
-        self.process.join()
 
     def run(self):
 
         if not self.stealth_mode:
             for camObj in self.camObjs.values():
                 cv2.namedWindow(camObj.cam_str_id, cv2.WINDOW_NORMAL)
-        
+
         alive = True
         while alive:
-
             # Update current state by dequeuing all currently available frames.
             frames_left = self.frame_queue.qsize()
             while frames_left:
 
                 try:
                     cam_str_id, frame = self.frame_queue.get_nowait()
-                except:
+
+                except queue.Empty:
                     break
 
                 # Add/Remove frame from current state.
-                if frame.any():
+                if frame:
                     video = self.camObjs[cam_str_id].video
                     if (not self.stealth_mode) or video:
-                        frame_cv2 = frame#.as_numpy_ndarray()
+                        frame_cv2 = frame.as_numpy_ndarray()
                         #frame.convert_pixel_format(PixelFormat.Bgr8)
                         frame_cv2 = cv2.cvtColor(frame_cv2, cv2.COLOR_BAYER_RG2RGB)
 
@@ -169,6 +170,8 @@ class FrameDisplayer():
                             video.write(frame_cv2)
 
                 else:
+                    alive = False
                     if not self.stealth_mode:
                         cv2.destroyWindow(cam_str_id)
 
+                frames_left -= 1

@@ -209,7 +209,7 @@ def main():
     cam_objs :dict[CamPerf] = {}
 
     grabbers :dict[FrameGrabber] = {}
-    frame_queue = mp.Queue(maxsize=FRAME_QUEUE_SIZE)
+    frame_queue = queue.Queue(maxsize=FRAME_QUEUE_SIZE)
 
 
     with Vimba.get_instance() as vimba:
@@ -220,22 +220,16 @@ def main():
 
         # add cameras by id
         for id in cam_ids:
-            try:
-                cam_obj = CamPerf(vimba.get_camera_by_id(id), id)
-                cam_objs[cam_obj.cam_str_id] = cam_obj
-            except:
-                print(f"Camera {id} not accessible")
+            cam_obj = CamPerf(vimba.get_camera_by_id(id), id)
+            cam_objs[cam_obj.cam_str_id] = cam_obj
         
         # add cameras by index
         if len(cam_indexes) != 0:
             aux_cams = vimba.get_all_cameras()
             for index in cam_indexes:
-                try:
-                    auxcam = aux_cams[index]
-                    cam_obj = CamPerf(auxcam, auxcam.get_name() + '-' + str(index))
-                    cam_objs[cam_obj.cam_str_id] = cam_obj
-                except:
-                    print(f"Camera index {index} not accessible")
+                auxcam = aux_cams[index]
+                cam_obj = CamPerf(auxcam, auxcam.get_name() + '-' + str(index))
+                cam_objs[cam_obj.cam_str_id] = cam_obj
 
 
         # setup cameras
@@ -257,7 +251,7 @@ def main():
                 # setup video
                 if(cam_obj.video):
                     cam_obj.video = cv2.VideoWriter(cam_obj.video_tmp_name, 
-                                            cv2.VideoWriter_fourcc('m','p','4','v'), 10, resolution)
+                                cv2.VideoWriter_fourcc('m','p','4','v'), args.frameRate, resolution)
                 
                 ptp_status = str(cam.PtpStatus.get())
                 if ptp_status not in ["Slave", "Master"]:
@@ -277,8 +271,8 @@ def main():
         
         # start FrameGrabber threads
         now = time.time_ns()
-        #trigger_stamp = now - (now % NSEC_IN_SEC) + (2*NSEC_IN_SEC)
-        trigger_stamp = now + NSEC_IN_SEC # 1 second from now
+        trigger_stamp = now - (now % NSEC_IN_SEC) + (2*NSEC_IN_SEC)
+        #trigger_stamp = now + NSEC_IN_SEC # 1 second from now
         for grabber in grabbers.values():
             grabber.trigger_stamp = trigger_stamp
             grabber.start()
@@ -304,7 +298,7 @@ def main():
                 aux = begin_stamp/NSEC_IN_SEC
                 start_time = datetime.fromtimestamp(math.floor( aux ))
                 # ISO 8601 format
-                timestamp = f'{start_time.isoformat()}.{str(begin_stamp%NSEC_IN_SEC) :9}Z'
+                timestamp = f'{start_time.isoformat()}.{str(begin_stamp%NSEC_IN_SEC) :0>9}Z'
                 os.rename(cam_obj.video_tmp_name, 
                             args.outputFile + '_' + cam_obj.cam_str_id + '_' + timestamp + '.mp4')
                             
