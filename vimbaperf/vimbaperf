@@ -209,7 +209,7 @@ def main():
     cam_objs :dict[CamPerf] = {}
 
     grabbers :dict[FrameGrabber] = {}
-    frame_queue = mp.Queue(maxsize=FRAME_QUEUE_SIZE)
+    frame_queue = queue.Queue(maxsize=FRAME_QUEUE_SIZE)
 
 
     with Vimba.get_instance() as vimba:
@@ -220,22 +220,16 @@ def main():
 
         # add cameras by id
         for id in cam_ids:
-            try:
-                cam_obj = CamPerf(vimba.get_camera_by_id(id), id)
-                cam_objs[cam_obj.cam_str_id] = cam_obj
-            except:
-                print(f"Camera {id} not accessible")
+            cam_obj = CamPerf(vimba.get_camera_by_id(id), id)
+            cam_objs[cam_obj.cam_str_id] = cam_obj
         
         # add cameras by index
         if len(cam_indexes) != 0:
             aux_cams = vimba.get_all_cameras()
             for index in cam_indexes:
-                try:
-                    auxcam = aux_cams[index]
-                    cam_obj = CamPerf(auxcam, auxcam.get_name() + '-' + str(index))
-                    cam_objs[cam_obj.cam_str_id] = cam_obj
-                except:
-                    print(f"Camera index {index} not accessible")
+                auxcam = aux_cams[index]
+                cam_obj = CamPerf(auxcam, auxcam.get_name() + '-' + str(index))
+                cam_objs[cam_obj.cam_str_id] = cam_obj
 
 
         # setup cameras
