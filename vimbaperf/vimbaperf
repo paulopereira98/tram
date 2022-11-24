@@ -277,8 +277,8 @@ def main():
         
         # start FrameGrabber threads
         now = time.time_ns()
-        #trigger_stamp = now - (now % NSEC_IN_SEC) + (2*NSEC_IN_SEC)
-        trigger_stamp = now + NSEC_IN_SEC # 1 second from now
+        trigger_stamp = now - (now % NSEC_IN_SEC) + (2*NSEC_IN_SEC)
+        #trigger_stamp = now + NSEC_IN_SEC # 1 second from now
         for grabber in grabbers.values():
             grabber.trigger_stamp = trigger_stamp
             grabber.start()
@@ -304,7 +304,7 @@ def main():
                 aux = begin_stamp/NSEC_IN_SEC
                 start_time = datetime.fromtimestamp(math.floor( aux ))
                 # ISO 8601 format
-                timestamp = f'{start_time.isoformat()}.{str(begin_stamp%NSEC_IN_SEC) :9}Z'
+                timestamp = f'{start_time.isoformat()}.{str(begin_stamp%NSEC_IN_SEC) :0>9}Z'
                 os.rename(cam_obj.video_tmp_name, 
                             args.outputFile + '_' + cam_obj.cam_str_id + '_' + timestamp + '.mp4')
                             

@@ -117,7 +117,7 @@ class FrameGrabber(threading.Thread):
             pass
 
         finally:
-            self.try_put_frame(None)
+            self.try_put_frame(np.array(False))
 
 
 class FrameDisplayer():
@@ -169,6 +169,7 @@ class FrameDisplayer():
                             video.write(frame_cv2)
 
                 else:
+                    alive = False
                     if not self.stealth_mode:
                         cv2.destroyWindow(cam_str_id)
 
