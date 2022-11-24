@@ -82,7 +82,7 @@ class FrameGrabber(threading.Thread):
                 print('{:7} {:5} {:20} {:20} {:8.2f} {:8.4f} {:8.04f}'.format(
                         self.camObj.cam_str_id, frame_id, currentTime, localTime, transit, 
                         delta/NSEC_IN_MSEC, fps), flush=True)
-                self.last = currentTime
+                self.lastTime = currentTime
 
         cam.queue_frame(frame)
 

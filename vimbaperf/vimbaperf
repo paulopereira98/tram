@@ -251,7 +251,7 @@ def main():
                 # setup video
                 if(cam_obj.video):
                     cam_obj.video = cv2.VideoWriter(cam_obj.video_tmp_name, 
-                                            cv2.VideoWriter_fourcc('m','p','4','v'), 10, resolution)
+                                cv2.VideoWriter_fourcc('m','p','4','v'), args.frameRate, resolution)
                 
                 ptp_status = str(cam.PtpStatus.get())
                 if ptp_status not in ["Slave", "Master"]:
