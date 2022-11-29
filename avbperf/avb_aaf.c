@@ -39,7 +39,6 @@
 #include <string.h>
 #include <sys/queue.h>
 #include <sys/timerfd.h>
-#include <alloca.h>
 #include <unistd.h>
 #include <inttypes.h>
 #include <math.h>
@@ -196,7 +195,7 @@ int avb_aaf_talker(FILE *term_out, FILE *term_in, char ifname[16], uint8_t macad
 	struct sockaddr_ll sk_addr;
 	uint8_t seq_num = 0;
 
-	snd_pcm_t *pcm_handle = NULL;
+	snd_pcm_t *pcm_handle;
 
 	struct avtp_stream_pdu *pdu;
 
@@ -293,7 +292,6 @@ static int schedule_sample(int fd, struct timespec *tspec, uint8_t *pcm_sample,
 	entry->tspec.tv_sec = tspec->tv_sec;
 	entry->tspec.tv_nsec = tspec->tv_nsec;
 	memcpy(entry->pcm_sample, pcm_sample, data_len);
-	//memcpy_s(entry->pcm_sample, pcm_sample, data_len);
 
 	STAILQ_INSERT_TAIL(samples, entry, entries);
 
@@ -646,7 +644,7 @@ int avb_aaf_listener(FILE * term_out, FILE* term_in, char *ifname, stream_settin
 	fds[0].events = POLLIN;
 	// packet timer
 	fds[1].fd = timer_fd;
-	fds[1].events = POLLIN;
+	fds[1].events = POLLIN; //POLLPRI
 	// session timer
 	fds[2].fd = session_tim_fd;
 	fds[2].events = POLLIN;
@@ -705,6 +703,7 @@ int avb_aaf_listener(FILE * term_out, FILE* term_in, char *ifname, stream_settin
 			res = aaf_timeout(timer_fd, pcm_handle, set.data_len, &samples);
 			if (res < 0)
 				goto end;
+			snd_pcm_prepare(pcm_handle);
 			play_fragment(pcm_handle, &samples, set.frames_per_pdu, wav_fp);
 			if (STAILQ_EMPTY(&samples))
 				is_running = false;
@@ -718,7 +717,7 @@ int avb_aaf_listener(FILE * term_out, FILE* term_in, char *ifname, stream_settin
 		
 		// Check escape key
 		read(term_in_fd,&key,1);
-		if (key==27)
+		if (key==27)//getchar()=='q')
 			break;
 
 	}

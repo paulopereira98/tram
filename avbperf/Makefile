@@ -18,9 +18,6 @@ ALSA_LDLIBS := -lasound
 WAV_CFLAGS := -Wno-multichar -Wno-format-truncation
 WAV_LDLIBS := #-lwav
 
-CFLAGS  := -D_POSIX_C_SOURCE=200809L -std=c17
-LDLIBS  :=
-
 CFLAGS  += $(AVB_CFLAGS) $(ALSA_CFLAGS)
 LDLIBS  += $(AVB_LDLIBS) $(ALSA_LDLIBS)
 LDFLAGS := -W -Wall

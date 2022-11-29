@@ -34,7 +34,6 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
-#include <asm-generic/socket.h>
 #include <sys/timerfd.h>
 #include <sys/types.h>
 #include <time.h>

@@ -5,13 +5,11 @@
  */
 
 #include <alsa/asoundlib.h>
-#include <alloca.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
 #include <stdlib.h>
-#include <stdint.h>
 
 #include "avb_aaf.h"
 
@@ -22,7 +20,7 @@
 #define ALSA_PCM_NEW_HW_PARAMS_API
 
 
-static uint32_t bit_depth_to_alsa(uint32_t bit_depth) 
+static uint bit_depth_to_alsa(uint bit_depth) 
 {
   switch (bit_depth) {
   case 16:
