@@ -42,6 +42,8 @@
 #include <unistd.h>
 #include <inttypes.h>
 #include <math.h>
+#include <stdio.h>
+#include <termios.h>
 
 #include <avtp.h>
 #include <avtp_aaf.h>
@@ -53,6 +55,7 @@
 #include "avb_aaf.h"
 #include "avb_stats.h"
 
+//#define GCC_PRINTFLIKE
 #define NSEC_PER_SEC		1000000000ULL
 #define NSEC_PER_MSEC		1000000ULL
 
@@ -116,7 +119,7 @@ static void print_settings(FILE *file, stream_settings_t set, bool is_talker)
 	fprintf(file, is_talker ? \
 				  "///                 AAF Talker Node                 ///\n" : \
 				  "///                AAF Listener Node                ///\n");
-    fprintf(file, "///////////////////////////////////////////////////////\n\n");
+	fprintf(file, "///////////////////////////////////////////////////////\n\n");
 
 	fprintf(file, "Stream ID       : %16lX\n", 	set.stream_id	);
 	fprintf(file, "Sample rate     : %d Hz\n", 	set.sample_rate	);
@@ -126,6 +129,19 @@ static void print_settings(FILE *file, stream_settings_t set, bool is_talker)
 	fprintf(file, "HW latency      : %.2f ms\n", avb_aaf_hwlatency_to_ns(&set) / (float)NSEC_PER_MSEC);
 	fprintf(file, "Analog e2e lat. : %.2f ms\n\n", 
 				2.0*(avb_aaf_hwlatency_to_ns(&set) / (float)NSEC_PER_MSEC) + set.max_transit_time);
+    fprintf(file, "------------------ Press ESC to exit ------------------\n");
+}
+
+static void term_nonblock_setup(struct termios *term_old_set){
+	struct termios term_new_set;
+
+    tcgetattr(0, term_old_set);
+    term_new_set = *term_old_set;
+    term_new_set.c_lflag &= ~ICANON;
+	term_new_set.c_lflag &= ~ECHO;
+    term_new_set.c_cc[VMIN] = 0;
+    term_new_set.c_cc[VTIME] = 0;
+    tcsetattr(0, TCSANOW, &term_new_set);
 }
 
 static int init_pdu(struct avtp_stream_pdu *pdu, stream_settings_t set)
@@ -172,9 +188,10 @@ static int init_pdu(struct avtp_stream_pdu *pdu, stream_settings_t set)
 }
 
 
-int talker(char ifname[16], uint8_t macaddr[6], int priority, stream_settings_t set, char* adev)
+int avb_aaf_talker(FILE *term_out, FILE *term_in, char ifname[16], uint8_t macaddr[6], 
+										int priority, stream_settings_t set, char* adev)
 {
-	int fd, res;
+	int fd, res, term_in_fd, key=0;
 	struct sockaddr_ll sk_addr;
 	uint8_t seq_num = 0;
 
@@ -182,6 +199,10 @@ int talker(char ifname[16], uint8_t macaddr[6], int priority, stream_settings_t 
 
 	struct avtp_stream_pdu *pdu;
 
+	struct termios term_old_set;
+	term_nonblock_setup(&term_old_set);
+
+	term_in_fd = fileno(term_in);
 
 	fd = create_talker_socket(priority);
 	if (fd < 0)
@@ -237,6 +258,11 @@ int talker(char ifname[16], uint8_t macaddr[6], int priority, stream_settings_t 
 		if (n != set.pdu_size) {
 			fprintf(stderr, "wrote %zd bytes, expected %zd\n", n, (size_t)set.pdu_size);
 		}
+
+		// Check escape key
+		read(term_in_fd,&key,1);
+		if (key==27)//getchar()=='q')
+			break;
 	}
 	res = 0;
 
@@ -244,6 +270,7 @@ end:
 	//close devices
 	avb_alsa_close(pcm_handle);
 	close(fd);
+	tcsetattr(0, TCSANOW, &term_old_set);
 	return -res;
 }
 
@@ -502,7 +529,7 @@ static inline void play_fragment(snd_pcm_t *pcm_handle, struct sample_queue *sam
 
 }
 
-int timeout(int fd, snd_pcm_t *pcm_handle, int data_len, struct sample_queue *samples)
+int aaf_timeout(int fd, snd_pcm_t *pcm_handle, int data_len, struct sample_queue *samples)
 {
 	ssize_t n;
 	uint64_t expirations;
@@ -568,9 +595,10 @@ static int close_wav_recorder(WavFile *fp, struct timespec *start, char *filenam
 	return rename(TMP_WAV_FILE, wav_filename);
 }
 
-int listener(char *ifname, stream_settings_t set, char *adev, int rec_time, char *filename)
+int avb_aaf_listener(FILE * term_out, FILE* term_in, char *ifname, stream_settings_t set, 
+													char *adev, int rec_time, char *filename)
 {
-	int sk_fd, timer_fd, session_tim_fd, res;
+	int sk_fd, timer_fd, session_tim_fd, term_in_fd, res, key=0;
 	struct pollfd fds[3];
 	uint8_t macaddr[6] = {0,0,0,0,0,0};
 	uint8_t expected_seq = 0;
@@ -589,6 +617,11 @@ int listener(char *ifname, stream_settings_t set, char *adev, int rec_time, char
 	avb_stats_data_node_t start_stat_node;
 
 	struct timespec start_tspec, timeout_tspec;
+
+	struct termios term_old_set;
+	term_nonblock_setup(&term_old_set);
+
+	term_in_fd = fileno(term_in);
 
 	sk_fd = create_listener_socket(ifname, macaddr, ETH_P_TSN);
 	if (sk_fd < 0)
@@ -619,7 +652,7 @@ int listener(char *ifname, stream_settings_t set, char *adev, int rec_time, char
 	//setup audio device
 	avb_alsa_setup(&pcm_handle, adev, &set, false);
 
-	print_settings(stdout, set, false);
+	print_settings(term_out, set, false);
 
 	if (filename[0] != '\0'){
 		setup_wav_recorder(&wav_fp, set);
@@ -641,7 +674,7 @@ int listener(char *ifname, stream_settings_t set, char *adev, int rec_time, char
 
 	// infinite loop
 	while (1) {
-		res = poll(fds, 3, -1);
+		res = poll(fds, 3, 1);
 		if (res < 0) {
 			perror("Failed to poll() fds");
 			goto end;
@@ -667,7 +700,7 @@ int listener(char *ifname, stream_settings_t set, char *adev, int rec_time, char
 			// the following aren't because the playback is synced by hardware
 			is_running = true;
 
-			res = timeout(timer_fd, pcm_handle, set.data_len, &samples);
+			res = aaf_timeout(timer_fd, pcm_handle, set.data_len, &samples);
 			if (res < 0)
 				goto end;
 			snd_pcm_prepare(pcm_handle);
@@ -681,6 +714,11 @@ int listener(char *ifname, stream_settings_t set, char *adev, int rec_time, char
 			// session timeout
 			break;
 		}
+		
+		// Check escape key
+		read(term_in_fd,&key,1);
+		if (key==27)//getchar()=='q')
+			break;
 
 	}
 
@@ -689,8 +727,10 @@ int listener(char *ifname, stream_settings_t set, char *adev, int rec_time, char
 
 end:
 	res = avb_stats_process_stats(&stats, &set);
-	if (res == 0)
-		avb_stats_print_stats(stdout, &stats);
+	if (res == 0){
+		fprintf(term_out, "\n");
+		avb_stats_print_stats(term_out, &stats);
+	}
 	
 	//close devices
 	if (wav_fp){
@@ -704,6 +744,7 @@ end:
 	close(sk_fd);
 	close(timer_fd);
 	close(session_tim_fd);
+	tcsetattr(0, TCSANOW, &term_old_set);
 	return -res;
 }
 

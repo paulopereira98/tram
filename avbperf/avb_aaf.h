@@ -51,7 +51,9 @@ int sample_rate_to_aaf(int sample_rate);
 
 uint64_t avb_aaf_hwlatency_to_ns(stream_settings_t *set);
 
-int talker(char *ifname, uint8_t *macaddr, int priority, stream_settings_t settings, char *adev);
-int listener(char *ifname, stream_settings_t settings, char *adev, int rec_time, char *filename);
+int avb_aaf_talker(FILE *term_out, FILE *term_in, char ifname[16], uint8_t macaddr[6], 
+										int priority, stream_settings_t set, char* adev);
+int avb_aaf_listener(FILE * term_out, FILE* term_in, char *ifname, stream_settings_t set, 
+													char *adev, int rec_time, char *filename);
 
 #endif

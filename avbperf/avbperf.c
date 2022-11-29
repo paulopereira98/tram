@@ -225,8 +225,8 @@ int main(int argc, char *argv[])
 		(i.e.: Left and Right audio channels)
 	*/
     if(talker_mode)
-        return talker(ifname, macaddr, priority, settings, device);
+        return avb_aaf_talker(stdout, stdin, ifname, macaddr, priority, settings, device);
     else
-        return listener(ifname, settings, device, record_time, record_file);
+        return avb_aaf_listener(stdout, stdin, ifname, settings, device, record_time, record_file);
 
 }
