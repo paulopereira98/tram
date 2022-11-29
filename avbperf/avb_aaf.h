@@ -30,6 +30,7 @@
 #define _AVB_AAF_H_
 
 #include <stdint.h>
+#include <stdio.h>
 
 typedef struct {
     uint64_t stream_id;
