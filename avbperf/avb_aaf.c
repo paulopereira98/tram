@@ -261,7 +261,7 @@ int avb_aaf_talker(FILE *term_out, FILE *term_in, char ifname[16], uint8_t macad
 
 		// Check escape key
 		read(term_in_fd,&key,1);
-		if (key==27)//getchar()=='q')
+		if (key==27)
 			break;
 	}
 	res = 0;
@@ -644,7 +644,7 @@ int avb_aaf_listener(FILE * term_out, FILE* term_in, char *ifname, stream_settin
 	fds[0].events = POLLIN;
 	// packet timer
 	fds[1].fd = timer_fd;
-	fds[1].events = POLLIN; //POLLPRI
+	fds[1].events = POLLIN;
 	// session timer
 	fds[2].fd = session_tim_fd;
 	fds[2].events = POLLIN;
@@ -703,7 +703,6 @@ int avb_aaf_listener(FILE * term_out, FILE* term_in, char *ifname, stream_settin
 			res = aaf_timeout(timer_fd, pcm_handle, set.data_len, &samples);
 			if (res < 0)
 				goto end;
-			snd_pcm_prepare(pcm_handle);
 			play_fragment(pcm_handle, &samples, set.frames_per_pdu, wav_fp);
 			if (STAILQ_EMPTY(&samples))
 				is_running = false;
@@ -717,7 +716,7 @@ int avb_aaf_listener(FILE * term_out, FILE* term_in, char *ifname, stream_settin
 		
 		// Check escape key
 		read(term_in_fd,&key,1);
-		if (key==27)//getchar()=='q')
+		if (key==27)
 			break;
 
 	}

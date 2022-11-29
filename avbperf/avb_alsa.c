@@ -144,6 +144,6 @@ inline int avb_alsa_write(snd_pcm_t *handle, void *buffer, snd_pcm_uframes_t fra
 
 void avb_alsa_close(snd_pcm_t *handle)
 {
-	snd_pcm_drain(handle);
+	snd_pcm_drop(handle);
 	snd_pcm_close(handle);
 }
