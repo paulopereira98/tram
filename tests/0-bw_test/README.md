@@ -50,6 +50,7 @@ $ iperf3 -s
 
 **$ iperf3 --client=asus.local --zerocopy --time=4 --omit=2**
 @import "0-netgear_tcp.log"
+<br>
 
 
 <!--> <!-->
@@ -70,6 +71,31 @@ $ iperf3 -s
 
 **$ iperf3 --client=asus.local --zerocopy --time=4 --omit=2**
 @import "0-linuxbr_tcp.log"
+<br>
 
 
+<!--> <!-->
+### OpenVSwitch
+```mermaid
+    graph LR;
 
+    client(Client PC<br><i>asus.local<i/>);
+    server(Edge Server<br><i>msi.local<i/>);
+    sw(Soft-switch<br><i>PC w/ 2x I210<i/>);
+
+    client-->sw;
+    sw-->server;
+```
+**$ iperf3 --client=asus.local --zerocopy --udp --bitrate=1G --time=4 --omit=2**
+@import "0-ovs_udp.log"
+
+**$ iperf3 --client=asus.local --zerocopy --time=4 --omit=2**
+@import "0-ovs_tcp.log"
+<br>
+
+
+<!--> <!-->
+### OpenVSwitch with DPDK
+
+
+<br>
