@@ -1,5 +1,7 @@
 
 
+VLAN_ID=0
+VLAN_NAME="vlan$VLAN_ID"
 
 if [ -z "$1" ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]
 then
@@ -9,7 +11,7 @@ then
 else
 
     cmd="sudo ip link add link $1 \
-                name vlan0 type vlan id 0 \
+                name $VLAN_NAME type vlan id $VLAN_ID \
                 egress-qos-map 0:0 1:1 2:2 3:3 4:4 5:5 6:6 7:7"
     echo $cmd
     eval $cmd
