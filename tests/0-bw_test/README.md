@@ -11,7 +11,7 @@ $ sudo nice -n -20 bash
 ```
 On the sender pc a server node is started:
 ```bash
-$ iperf3 --server --reverse
+$ iperf3 --server
 ```
 <br>
 
