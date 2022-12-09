@@ -92,10 +92,3 @@ $ iperf3 --server --reverse
 **$ iperf3 --client=asus.local --zerocopy --time=4 --omit=2**
 @import "0-ovs_tcp.log"
 <br>
-
-
-<!--> <!-->
-### OpenVSwitch with DPDK
-
-
-<br>
