@@ -1,11 +1,25 @@
-
-/home/tsnswitch/linuxptp/configs/gPTP.cfg
-
-sudo ptp4l -f /usr/share/doc/linuxptp/configs/gPTP.cfg -i enp21s0 --step_threshold=1 -m
-sudo ptp4l -f /home/tsnswitch/linuxptp/configs/gPTP.cfg -i enp21s0 --step_threshold=1 -m
+#!/bin/bash
 
 
+# E2E or P2P
+TYPE="P2P"
 
-sudo phc2sys -s enp21s0 -c CLOCK_REALTIME --step_threshold=1 --transportSpecific=1 -w -m
+NICS="enp1s0 enp21s0 eno2 eno1"
 
-sudo phc2sys -c enp21s0 -s CLOCK_REALTIME --step_threshold=1 --transportSpecific=1 -w -m
+
+cmd="sudo ptp4l -m "
+
+if [ "$TYPE" = "E2E" ]
+then
+    cmd+="-f ptpcfg/E2E-TC.cfg "
+else
+    cmd+="-f ptpcfg/P2P-TC.cfg "
+fi
+
+for nic in $NICS
+do  
+    cmd+="-i $nic "
+done
+
+    echo $cmd
+    eval $cmd
