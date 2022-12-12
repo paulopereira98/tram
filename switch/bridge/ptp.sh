@@ -6,14 +6,15 @@ TYPE="P2P"
 
 NICS="enp1s0 enp21s0 eno2 eno1"
 
+PTP_CONF_DIR="../../ptp/configs/"
 
 cmd="sudo ptp4l -m "
 
 if [ "$TYPE" = "E2E" ]
 then
-    cmd+="-f ptpcfg/E2E-TC.cfg "
+    cmd+="-f ${PTP_CONF_DIR}/E2E-TC.cfg "
 else
-    cmd+="-f ptpcfg/P2P-TC.cfg "
+    cmd+="-f ${PTP_CONF_DIR}/P2P-TC.cfg "
 fi
 
 for nic in $NICS
