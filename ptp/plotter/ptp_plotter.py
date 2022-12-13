@@ -20,8 +20,12 @@ import sys
 import matplotlib.pyplot as plt
 
 
-minKernelTime = 0
-maxKernelTime = 1000000000
+#minKernelTime = 0
+#maxKernelTime = 1000000000
+duration = 60*10 #10 minutes
+#minKernelTime = 0
+#maxKernelTime = 1000000000
+
 pattern = 'ptp4l\[(.+)\]: master offset\s+(-?[0-9]+) s([012]) freq\s+([+-]\d+) path delay\s+(-?\d+)$'
 test_string = 'ptp4l[17498.733]: master offset    2551157 s0 freq -127500 path delay    481272'
 
@@ -29,6 +33,7 @@ kernelTime_arr = []
 masterOffset_arr = []
 freq_arr = []
 pathDelay_arr = []
+startTime = 0.0
 
 # Gnuplot data header
 print('# time, offset, freq, pathDelay')
@@ -43,16 +48,19 @@ for line in fileinput.input():
         state        = res.group(3)
         freq         = res.group(4)
         pathDelay    = res.group(5)    
-        if (state == '2') :#and (float(kernelTime) > minKernelTime) and (float(kernelTime) < maxKernelTime):
+
+        if startTime == 0.0:
+            startTime = float(kernelTime) #store first time
+
+        # state 1 is stepping
+        # state 2 is servo control
+        if (state == '2') and ( (float(kernelTime)-startTime) < duration) :
             #print(kernelTime, masterOffset, freq, pathDelay)
-            kernelTime_arr  .append(float(kernelTime))
+            kernelTime_arr  .append(float(kernelTime) - startTime)
             masterOffset_arr.append(int(masterOffset))
             freq_arr        .append(int(freq))
             pathDelay_arr   .append(int(pathDelay))
-            #if (len(pathDelay_arr) > 100):
-            #    break
 
-        
     # if issue in patter
     else:
         print("Regex error:", line)
