@@ -10,10 +10,11 @@
 # 2022.12.13
 #   -Changed regex pattern to match current ptp4l desktop implementation
 #   -Added matplotlib plotting
-#
+#   -added support for muiltiple log files
+# 
 # Run with:
 # ptp4l options -m -s > file
-# cat file | grep "master offset" | python3 ptp_plotter.py
+# python3 ptp_plotter.py -f file1 -l label1 -f file2 -l label2
  
 import re
 import sys
@@ -71,7 +72,7 @@ def displayPlot(filesStats :typing.List[PtpStats]):
 
     # Hide x labels and tick labels for top plots and y ticks for right plots.
     for ax in axs.flat:
-        ax.legend()
+        ax.legend(loc='upper right')
         ax.label_outer()
 
     plt.show()
