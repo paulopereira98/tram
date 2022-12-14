@@ -11,9 +11,9 @@ import argparse
 NSEC_IN_SEC = 1000000000
 AUX_VID_PREFIX = "sync"
 
-def thread_camera(fps :float, dec: int, camIDs :list, indexes :list, time :int):
+def thread_camera(fps :float, bin: int, camIDs :list, indexes :list, time :int):
 
-    cmd = f'../vimbaperf/vimbaperf --stealth --frameRate={fps} --time={time} --decimation={dec} '
+    cmd = f'../vimbaperf/vimbaperf --stealth --frameRate={fps} --time={time} --binning={bin} '
 
     for id in camIDs:
         cmd += f'--cameraID={id} '
@@ -67,8 +67,8 @@ def setup_parser():
     parser = argparse.ArgumentParser(description='Sync utility.')
     parser.add_argument('-f', "--frameRate", default=10, type=float, metavar='FPS', 
                         help='Target framerate (default 10 fps)')
-    parser.add_argument('-d', "--decimation", default=2, type=int, metavar='FACTOR', 
-                        help='On-camera image decimation factor. between 1 and 8 (default = 2)')
+    parser.add_argument('-b', "--binning", default=2, type=int, metavar='FACTOR', 
+                        help='On-camera image binning factor. between 1 and 4 (default = 2)')
     parser.add_argument('-c', "--cameraID", default=[], type=str, metavar='ID', action='append',
                         help='Camera id. More than one can be used (ex: -c id0 -c id1)')
     parser.add_argument('-i', "--index", default=[], type=int, metavar='#', action='append',
@@ -97,7 +97,7 @@ def main():
 
     
     cam_p = Process(target=thread_camera, 
-                    args=(args.frameRate, args.decimation, args.cameraID, args.index, args.time,))
+                    args=(args.frameRate, args.binning, args.cameraID, args.index, args.time,))
     mic_p = Process(target=thread_audio, 
                     args=(args.ifname, int(args.time),))
 

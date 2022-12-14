@@ -83,7 +83,7 @@ def get_camera(camera_id: Optional[str]) -> Camera:
             return cams[0]
 
 
-def setup_camera(cam: Camera, fps: int, decimation:int):
+def setup_camera(cam: Camera, fps: int, binning:int):
 
     #AcquisitionFrameRateAbs = fps
     #PixelFormat = BayerRG8
@@ -91,9 +91,9 @@ def setup_camera(cam: Camera, fps: int, decimation:int):
     #ExposureAuto = Off
     #ExposureTimeAbs = 900000/fps  # useconds * 50%
 
-    # clamp decimation between 1 and 8
-    decimation = decimation if decimation <= 8 else 8
-    decimation = decimation if decimation >  1 else 1
+    # clamp binning between 1 and 4
+    binning = binning if binning <= 4 else 4
+    binning = binning if binning >  1 else 1
     with cam:
         # Enable auto exposure time setting if camera supports it
         try:
@@ -121,10 +121,10 @@ def setup_camera(cam: Camera, fps: int, decimation:int):
         # resolution
         try:
             # set binning or decimation
-            cam.BinningHorizontal.set(decimation)
-            cam.BinningVertical.set(decimation)
-            #cam.DecimationHorizontal.set(decimation)
-            #cam.DecimationVertical.set(decimation)
+            cam.BinningHorizontal.set(binning)
+            cam.BinningVertical.set(binning)
+            #cam.DecimationHorizontal.set(binning)
+            #cam.DecimationVertical.set(binning)
 
             # set maximum resolution possible with current binning settings
             cam.Width.set( cam.WidthMax.get() )
@@ -177,8 +177,8 @@ def setup_parser():
                         help='Stealth mode, does\'t display video (saves cpu)')
     parser.add_argument('-f', "--frameRate", default=10, type=float, metavar='FPS', 
                         help='Target framerate (default 10 fps)')
-    parser.add_argument('-d', "--decimation", default=1, type=int, metavar='FACTOR', 
-                        help='On-camera image decimation factor. between 1 and 8 (default = 1)')
+    parser.add_argument('-b', "--binning", default=1, type=int, metavar='FACTOR', 
+                        help='On-camera image binning factor. between 1 and 4 (default = 1)')
     parser.add_argument('-c', "--cameraID", default=[], type=str, metavar='ID', action='append',
                         help='Camera id. More than one can be used (ex: -c id0 -c id1)')
     parser.add_argument('-i', "--index", default=[], type=int, metavar='#', action='append',
@@ -246,7 +246,7 @@ def main():
 
             with cam_obj.cam as cam:
 
-                resolution = setup_camera(cam, args.frameRate, args.decimation)
+                resolution = setup_camera(cam, args.frameRate, args.binning)
 
                 # setup video
                 if(cam_obj.video):
