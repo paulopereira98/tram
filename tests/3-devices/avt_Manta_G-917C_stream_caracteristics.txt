@@ -1,0 +1,23 @@
+DeviceModelName = Manta G-917C
+PixelFormat = BayerRG8 | Mono8
+BandwidthControlMode = StreamBytesPerSecond
+StreamBytesPerSecond = 124000000
+
+    Binning    = 1
+    Decimation = 1
+        HeightMax:               2710 pixels
+        WidthMax:                3384 pixels
+        AcquisitionFrameRateAbs: 10.1616 fps
+
+    Binning    = 2
+    Decimation = 1
+        HeightMax:               1354 pixels
+        WidthMax:                1692 pixels
+        AcquisitionFrameRateAbs: 17.6504 fps
+
+    Binning    = 1
+    Decimation = 2
+        HeightMax:               1354 pixels
+        WidthMax:                1692 pixels
+        AcquisitionFrameRateAbs: 12.9049 fps
+    

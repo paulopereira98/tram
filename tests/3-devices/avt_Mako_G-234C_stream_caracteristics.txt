@@ -1,0 +1,23 @@
+DeviceModelName = Mako G-234C
+PixelFormat = BayerRG8 | Mono8
+BandwidthControlMode = StreamBytesPerSecond
+StreamBytesPerSecond = 124000000
+
+    Binning    = 1
+    Decimation = 1
+        HeightMax:               1216 pixels
+        WidthMax:                1936 pixels
+        AcquisitionFrameRateAbs: 32.3384 fps
+
+    Binning    = 2
+    Decimation = 1
+        HeightMax:               608 pixels
+        WidthMax:                968 pixels
+        AcquisitionFrameRateAbs: 32.3384 fps
+
+    Binning    = 1
+    Decimation = 2
+        HeightMax:               608 pixels
+        WidthMax:                968 pixels
+        AcquisitionFrameRateAbs: 32.3384 fps
+
