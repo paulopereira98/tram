@@ -25,10 +25,10 @@ $ iperf3 --server
     client-->server;
 ```
 **$ iperf3 --reverse --client=asus.local --zerocopy --udp --bitrate=1G --time=4 --omit=2**
-@import "0-direct_udp.log"
+@import "iperf3_logs/1-direct_udp.log"
 
 **$ iperf3 --reverse --client=asus.local --zerocopy --time=4 --omit=2**
-@import "0-direct_tcp.log"
+@import "iperf3_logs/1-direct_tcp.log"
 <br>
 
 
@@ -46,10 +46,30 @@ $ iperf3 --server
     sw-->server;
 ```
 **$ iperf3 --client=asus.local --zerocopy --udp --bitrate=1G --time=4 --omit=2**
-@import "0-netgear_udp.log"
+@import "iperf3_logs/1-netgear_udp.log"
 
 **$ iperf3 --client=asus.local --zerocopy --time=4 --omit=2**
-@import "0-netgear_tcp.log"
+@import "iperf3_logs/1-netgear_tcp.log"
+<br>
+
+
+<!--> <!-->
+### OpenVSwitch
+```mermaid
+    graph LR;
+
+    client(Client PC<br><i>asus.local<i/>);
+    server(Edge Server<br><i>msi.local<i/>);
+    sw(OpenVSwitch<br><i>PC w/ 2x I210<i/>);
+
+    client-->sw;
+    sw-->server;
+```
+**$ iperf3 --client=asus.local --zerocopy --udp --bitrate=1G --time=4 --omit=2**
+@import "iperf3_logs/1-ovs_udp.log"
+
+**$ iperf3 --client=asus.local --zerocopy --time=4 --omit=2**
+@import "iperf3_logs/1-ovs_tcp.log"
 <br>
 
 
@@ -67,15 +87,20 @@ $ iperf3 --server
     sw-->server;
 ```
 **$ iperf3 --client=asus.local --zerocopy --udp --bitrate=1G --time=4 --omit=2**
-@import "0-linuxbr_udp.log"
+@import "iperf3_logs/1-linuxbr_udp.log"
 
 **$ iperf3 --client=asus.local --zerocopy --time=4 --omit=2**
-@import "0-linuxbr_tcp.log"
+@import "iperf3_logs/1-linuxbr_tcp.log"
 <br>
 
 
 <!--> <!-->
-### OpenVSwitch
+### Linux Bridge with shapers and filters
+The configuration files can fe found in ```./1-switch/```
+On the sender pc a server node is started:
+```bash
+$ iperf3 --server -port 5207
+```
 ```mermaid
     graph LR;
 
@@ -86,9 +111,26 @@ $ iperf3 --server
     client-->sw;
     sw-->server;
 ```
-**$ iperf3 --client=asus.local --zerocopy --udp --bitrate=1G --time=4 --omit=2**
-@import "0-ovs_udp.log"
+#### CBS with hardware offload
+**$ iperf3 --client=asus.local --zerocopy --udp --bitrate=1G --time=4 --omit=2 --port=5207**
+@import "iperf3_logs/1-shaper_hw_udp.log"
 
-**$ iperf3 --client=asus.local --zerocopy --time=4 --omit=2**
-@import "0-ovs_tcp.log"
+**$ iperf3 --client=asus.local --zerocopy --time=4 --omit=2 --port=5207**
+@import "iperf3_logs/1-shaper_hw_tcp.log"
+<br>
+
+#### CBS in software
+**$ iperf3 --client=asus.local --zerocopy --udp --bitrate=1G --time=4 --omit=2 --port=5207**
+@import "iperf3_logs/1-shaper_sw_udp.log"
+
+**$ iperf3 --client=asus.local --zerocopy --time=4 --omit=2 --port=5207**
+@import "iperf3_logs/1-shaper_sw_tcp.log"
+<br>
+
+#### TAS in software
+**$ iperf3 --client=asus.local --zerocopy --udp --bitrate=1G --time=4 --omit=2 --port=5207**
+@import "iperf3_logs/1-tas_sw_udp.log"
+
+**$ iperf3 --client=asus.local --zerocopy --time=4 --omit=2 --port=5207**
+@import "iperf3_logs/1-tas_sw_tcp.log"
 <br>
