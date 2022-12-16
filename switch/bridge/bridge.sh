@@ -23,8 +23,9 @@ sudo ip link set dev $BRIDGE up
 # enable dhcp for the bridge pc (so it can be accessed)
 sudo dhclient $BRIDGE
 
+brctl show $BRIDGE
 
 # Delete bridge:
 # 
-# sudo ip link set dev br0 down
-# sudo brctl delbr br0
+# sudo ip link set dev $BRIDGE down
+# sudo brctl delbr $BRIDGE
