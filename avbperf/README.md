@@ -32,10 +32,15 @@ sudo systemctl --system status pulseaudio.service
 
 /etc/pulse/client.conf 
 ```bash
-default-server = /var/run/pulse/native
+#default-server = /var/run/pulse/native
 autospawn = no
 ```
 
 sudo adduser root pulse-access
+sudo adduser pulse audio
 
 
+sudo modprobe snd-aloop
+
+
+sudo ./avbperf -t -i enp3s0 -d 1c:b7:2c:27:4c:78 -a snd-aloop

@@ -1,0 +1,16 @@
+Connecting to host switch.local, port 5203
+Reverse mode, remote host switch.local is sending
+[  5] local 10.42.0.84 port 5203 connected to 10.42.0.211 port 5203
+[ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
+[  5]   0.00-1.00   sec  47.4 MBytes   397 Mbits/sec  0.036 ms  0/34291 (0%)  (omitted)
+[  5]   1.00-2.00   sec  45.5 MBytes   382 Mbits/sec  0.034 ms  0/32940 (0%)  (omitted)
+[  5]   0.00-1.00   sec  45.5 MBytes   382 Mbits/sec  0.033 ms  0/32940 (0%)  
+[  5]   1.00-2.00   sec  45.5 MBytes   382 Mbits/sec  0.036 ms  0/32940 (0%)  
+[  5]   2.00-3.00   sec  45.5 MBytes   382 Mbits/sec  0.035 ms  0/32939 (0%)  
+[  5]   3.00-4.00   sec  45.5 MBytes   382 Mbits/sec  0.033 ms  0/32939 (0%)  
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
+[  5]   0.00-4.05   sec   184 MBytes   382 Mbits/sec  0.000 ms  0/131802 (0%)  sender
+[  5]   0.00-4.00   sec   182 MBytes   382 Mbits/sec  0.033 ms  0/131758 (0%)  receiver
+
+iperf Done.

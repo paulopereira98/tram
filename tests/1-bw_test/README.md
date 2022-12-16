@@ -45,10 +45,10 @@ $ iperf3 --server
     client-->sw;
     sw-->server;
 ```
-**$ iperf3 --client=asus.local --zerocopy --udp --bitrate=1G --time=4 --omit=2**
+**$ iperf3 --reverse --client=asus.local --zerocopy --udp --bitrate=1G --time=4 --omit=2**
 @import "iperf3_logs/1-netgear_udp.log"
 
-**$ iperf3 --client=asus.local --zerocopy --time=4 --omit=2**
+**$ iperf3 --reverse --client=asus.local --zerocopy --time=4 --omit=2**
 @import "iperf3_logs/1-netgear_tcp.log"
 <br>
 
@@ -65,10 +65,10 @@ $ iperf3 --server
     client-->sw;
     sw-->server;
 ```
-**$ iperf3 --client=asus.local --zerocopy --udp --bitrate=1G --time=4 --omit=2**
+**$ iperf3 --reverse --client=asus.local --zerocopy --udp --bitrate=1G --time=4 --omit=2**
 @import "iperf3_logs/1-ovs_udp.log"
 
-**$ iperf3 --client=asus.local --zerocopy --time=4 --omit=2**
+**$ iperf3 --reverse --client=asus.local --zerocopy --time=4 --omit=2**
 @import "iperf3_logs/1-ovs_tcp.log"
 <br>
 
@@ -86,10 +86,10 @@ $ iperf3 --server
     client-->sw;
     sw-->server;
 ```
-**$ iperf3 --client=asus.local --zerocopy --udp --bitrate=1G --time=4 --omit=2**
+**$ iperf3 --reverse --client=asus.local --zerocopy --udp --bitrate=1G --time=4 --omit=2**
 @import "iperf3_logs/1-linuxbr_udp.log"
 
-**$ iperf3 --client=asus.local --zerocopy --time=4 --omit=2**
+**$ iperf3 --reverse --client=asus.local --zerocopy --time=4 --omit=2**
 @import "iperf3_logs/1-linuxbr_tcp.log"
 <br>
 
@@ -112,25 +112,25 @@ $ iperf3 --server -port 5207
     sw-->server;
 ```
 #### CBS with hardware offload
-**$ iperf3 --client=asus.local --zerocopy --udp --bitrate=1G --time=4 --omit=2 --port=5207**
+**$ iperf3 --reverse --client=asus.local --zerocopy --udp --bitrate=1G --time=4 --omit=2 --port=5207**
 @import "iperf3_logs/1-shaper_hw_udp.log"
 
-**$ iperf3 --client=asus.local --zerocopy --time=4 --omit=2 --port=5207**
+**$ iperf3 --reverse --client=asus.local --zerocopy --time=4 --omit=2 --port=5207**
 @import "iperf3_logs/1-shaper_hw_tcp.log"
 <br>
 
 #### CBS in software
-**$ iperf3 --client=asus.local --zerocopy --udp --bitrate=1G --time=4 --omit=2 --port=5207**
+**$ iperf3 --reverse --client=asus.local --zerocopy --udp --bitrate=1G --time=4 --omit=2 --port=5207**
 @import "iperf3_logs/1-shaper_sw_udp.log"
 
-**$ iperf3 --client=asus.local --zerocopy --time=4 --omit=2 --port=5207**
+**$ iperf3 --reverse --client=asus.local --zerocopy --time=4 --omit=2 --port=5207**
 @import "iperf3_logs/1-shaper_sw_tcp.log"
 <br>
 
 #### TAS in software
-**$ iperf3 --client=asus.local --zerocopy --udp --bitrate=1G --time=4 --omit=2 --port=5207**
+**$ iperf3 --reverse --client=asus.local --zerocopy --udp --bitrate=1G --time=4 --omit=2 --port=5207**
 @import "iperf3_logs/1-tas_sw_udp.log"
 
-**$ iperf3 --client=asus.local --zerocopy --time=4 --omit=2 --port=5207**
+**$ iperf3 --reverse --client=asus.local --zerocopy --time=4 --omit=2 --port=5207**
 @import "iperf3_logs/1-tas_sw_tcp.log"
 <br>
