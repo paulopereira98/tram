@@ -3,10 +3,25 @@ PixelFormat = BayerRG8 | Mono8
 BandwidthControlMode = StreamBytesPerSecond
 StreamBytesPerSecond = 124000000
 
+imagepayload per packet: 1466 Bytes
+total packet size: 1518 Bytes (including 802.1Q tag added later)
+
+
     Binning    = 1
     Decimation = 1
         HeightMax:               1216 pixels
         WidthMax:                1936 pixels
+        AcquisitionFrameRateAbs: 32.3384 fps
+
+        image size: 2354176 Bytes
+        packets per frame: 1608+1
+        burst size: ~2.5 MBytes
+        average bandwidth: ~20 Mbps/fps
+
+    Binning    = 1
+    Decimation = 2
+        HeightMax:               608 pixels
+        WidthMax:                968 pixels
         AcquisitionFrameRateAbs: 32.3384 fps
 
     Binning    = 2
@@ -15,9 +30,8 @@ StreamBytesPerSecond = 124000000
         WidthMax:                968 pixels
         AcquisitionFrameRateAbs: 32.3384 fps
 
-    Binning    = 1
-    Decimation = 2
-        HeightMax:               608 pixels
-        WidthMax:                968 pixels
-        AcquisitionFrameRateAbs: 32.3384 fps
+        image size: 588544 Bytes
+        packets per frame: 401+1
+        burst size: ~650 kBytes
+        average bandwidth: ~20 Mbps/fps
 
