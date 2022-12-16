@@ -168,11 +168,24 @@ def list_cameras():
             except (VimbaCameraError):
                 print('/// Camera not accessible')
 
+def config_ptp():
+
+    with Vimba.get_instance() as vimba:
+        cams = vimba.get_all_cameras()
+        print('Cameras found: {}'.format(len(cams)))
+        index=0
+        for cam in cams:
+            with cam:
+                cam.PtpMode.set("Slave")
+            print('/// Setting {} PTP to slave mode'.format(cam.get_name()))
+
 
 def setup_parser():
     parser = argparse.ArgumentParser(description='Vimba tester.')
     parser.add_argument('-l', "--list", dest='list_mode', action="store_true",
                         help='List cameras')
+    parser.add_argument('-p', "--ptp", dest='config_ptp_mode', action="store_true",
+                        help='Configure all cameras in PTP slave mode')
     parser.add_argument('-s', "--stealth", dest='stealth_mode', action="store_true",
                         help='Stealth mode, does\'t display video (saves cpu)')
     parser.add_argument('-f', "--frameRate", default=10, type=float, metavar='FPS', 
@@ -198,6 +211,9 @@ def main():
     print_preamble()
     if args.list_mode:
         list_cameras()
+        return 0
+    if args.config_ptp_mode:
+        config_ptp()
         return 0
     if args.stealth_mode and not args.time:
         print("Timeout is required when running in stealth mode")
