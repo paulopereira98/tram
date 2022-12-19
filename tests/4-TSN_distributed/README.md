@@ -33,6 +33,7 @@ The shaper and filter configuration files can fe found in ```./4-scripts/```
 ### Best effort approach
 In this test no traffic shaping is used.
 
+#### Excess bandwidth: 600 Mbps + 500 Mbps
 **$ iperf3 --reverse --client=asus.local   --zerocopy --udp --bitrate=1G --time=4 --omit=2 --cport=5205 --port=5205 &\\
     iperf3 --reverse --client=switch.local --zerocopy --udp --bitrate=1G --time=4 --omit=2 --cport=5203 --port=5203**
 Class 5:
@@ -41,8 +42,29 @@ Class 3:
 @import "iperf3_logs/4-best_effort_C3.log"
 
 
-### CBS
+### CBS distributed
 
+#### Excess bandwidth: 600 Mbps + 500 Mbps
+**$ iperf3 --reverse --client=asus.local   --zerocopy --udp --bitrate=1G --time=4 --omit=2 --cport=5205 --port=5205 &\\
+    iperf3 --reverse --client=switch.local --zerocopy --udp --bitrate=1G --time=4 --omit=2 --cport=5203 --port=5203**
+Class 5:
+@import "iperf3_logs/4-dist_CBS_C5.log"
+Class 3:
+@import "iperf3_logs/4-dist_CBS_C3.log"
+
+
+#### Low bandwidth: 400 Mbps + 300 Mbps
+**$ iperf3 --reverse --client=asus.local   --zerocopy --udp --bitrate=1G --time=4 --omit=2 --cport=5205 --port=5205 &\\
+    iperf3 --reverse --client=switch.local --zerocopy --udp --bitrate=1G --time=4 --omit=2 --cport=5203 --port=5203**
+Class 5:
+@import "iperf3_logs/4-700mbps_dist_CBS_C5.log"
+Class 3:
+@import "iperf3_logs/4-700mbps_dist_CBS_C3.log"
+
+
+### CBS in switch
+
+#### Excess bandwidth: 600 Mbps + 500 Mbps
 **$ iperf3 --reverse --client=asus.local   --zerocopy --udp --bitrate=1G --time=4 --omit=2 --cport=5205 --port=5205 &\\
     iperf3 --reverse --client=switch.local --zerocopy --udp --bitrate=1G --time=4 --omit=2 --cport=5203 --port=5203**
 Class 5:
@@ -51,15 +73,19 @@ Class 3:
 @import "iperf3_logs/4-CBS_C3.log"
 
 
+#### Low bandwidth: 400 Mbps + 300 Mbps
+**$ iperf3 --reverse --client=asus.local   --zerocopy --udp --bitrate=1G --time=4 --omit=2 --cport=5205 --port=5205 &\\
+    iperf3 --reverse --client=switch.local --zerocopy --udp --bitrate=1G --time=4 --omit=2 --cport=5203 --port=5203**
+Class 5:
+@import "iperf3_logs/4-700mbps_CBS_C5.log"
+Class 3:
+@import "iperf3_logs/4-700mbps_CBS_C3.log"
 
 
 
 
-
-
-
-iperf3 --reverse --client=asus.local   --zerocopy --udp --bitrate=1G --time=4 --omit=2 --cport=5205 --port=5205 > iperf3_logs/4-best_effort_C5.log &\
-iperf3 --reverse --client=switch.local --zerocopy --udp --bitrate=1G --time=4 --omit=2 --cport=5203 --port=5203 > iperf3_logs/4-best_effort_C3.log
+iperf3 --reverse --client=asus.local   --zerocopy --udp --bitrate=1G --time=4 --omit=2 --cport=5205 --port=5205 > iperf3_logs/4-CBS_C5.log &\
+iperf3 --reverse --client=switch.local --zerocopy --udp --bitrate=1G --time=4 --omit=2 --cport=5203 --port=5203 > iperf3_logs/4-CBS_C3.log
 
 
 

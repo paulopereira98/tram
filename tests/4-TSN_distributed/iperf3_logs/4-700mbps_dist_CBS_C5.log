@@ -1,0 +1,15 @@
+Connecting to host asus.local, port 5205
+Reverse mode, remote host asus.local is sending
+[  5] local 10.42.0.84 port 5205 connected to 10.42.0.1 port 5205
+[ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
+[  5]   0.00-1.00   sec  72.1 MBytes   604 Mbits/sec  0.011 ms  35862/88040 (41%)  (omitted)
+[  5]   1.00-1.00   sec  69.4 MBytes   291 Mbits/sec  0.019 ms  72057/172626 (42%)  
+[  5]   1.00-2.00   sec  69.4 MBytes   582 Mbits/sec  0.008 ms  36061/86341 (42%)  
+[  5]   2.00-3.00   sec  69.4 MBytes   582 Mbits/sec  0.020 ms  36034/86307 (42%)  
+[  5]   3.00-4.00   sec  69.4 MBytes   582 Mbits/sec  0.025 ms  36084/86329 (42%)  
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
+[  5]   0.00-4.04   sec   482 MBytes  1.00 Gbits/sec  0.000 ms  0/347020 (0%)  sender
+[  5]   0.00-4.00   sec   278 MBytes   582 Mbits/sec  0.025 ms  144225/345306 (42%)  receiver
+
+iperf Done.
