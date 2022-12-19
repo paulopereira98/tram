@@ -104,12 +104,12 @@ Class 3:
 
 #### 1 s cycle time
 Class 5:
-@import "iperf3_logs/3-tas_sw_C5_100ms.log"
+@import "iperf3_logs/3-tas_sw_C5_1s.log"
 Class 3:
-@import "iperf3_logs/3-tas_sw_C3_100ms.log"
+@import "iperf3_logs/3-tas_sw_C3_1s.log"
 
 #### 10 s cycle time
 Class 5:
-@import "iperf3_logs/3-tas_sw_C5_100ms.log"
+@import "iperf3_logs/3-tas_sw_C5_10s.log"
 Class 3:
-@import "iperf3_logs/3-tas_sw_C3_100ms.log"
+@import "iperf3_logs/3-tas_sw_C3_10s.log"
