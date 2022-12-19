@@ -18,7 +18,7 @@ On the main sender pc a server node is started: ```$ iperf3 --server --port=5205
 On the interference node a server node is started: ```$ iperf3 --server --port=5203```
 Only UDP packets will be used for this test.
 For the interference, it will be used the same pc that implements the switch because availability limitations. Since the pc has hight performance hardware, performance shouldn't be affected in any significant way.
-The shaper and filter configuration files can fe found in ```./3-switch/```
+The shaper and filter configuration files can fe found in ```./3-scripts/```
 <br>
 
 ```mermaid

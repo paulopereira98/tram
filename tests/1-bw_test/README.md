@@ -96,7 +96,7 @@ $ iperf3 --server
 
 <!--> <!-->
 ### Linux Bridge with shapers and filters
-The configuration files can fe found in ```./1-switch/```
+The configuration files can fe found in ```./1-scripts/```
 On the sender pc a server node is started:
 ```bash
 $ iperf3 --server -port 5207
