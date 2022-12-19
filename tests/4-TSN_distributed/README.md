@@ -29,6 +29,7 @@ The shaper and filter configuration files can fe found in ```./4-scripts/```
     sw-->server;
 ```
 
+
 ### Best effort approach
 In this test no traffic shaping is used.
 
@@ -49,14 +50,6 @@ Class 5:
 Class 3:
 @import "iperf3_logs/4-CBS_C3.log"
 
-### CBS
-
-**$ iperf3 --reverse --client=asus.local   --zerocopy --udp --bitrate=1G --time=4 --omit=2 --cport=5205 --port=5205 &\\
-    iperf3 --reverse --client=switch.local --zerocopy --udp --bitrate=1G --time=4 --omit=2 --cport=5203 --port=5203**
-Class 5:
-@import "iperf3_logs/4-TAS_C5.log"
-Class 3:
-@import "iperf3_logs/4-TAS_C3.log"
 
 
 
@@ -64,8 +57,9 @@ Class 3:
 
 
 
-iperf3 --reverse --client=asus.local   --zerocopy --udp --bitrate=1G --time=4 --omit=2 --cport=5205 --port=5205 > iperf3_logs/4-tas_sw_C5.log &\
-iperf3 --reverse --client=switch.local --zerocopy --udp --bitrate=1G --time=4 --omit=2 --cport=5203 --port=5203 > iperf3_logs/4-tas_sw_C3.log
+
+iperf3 --reverse --client=asus.local   --zerocopy --udp --bitrate=1G --time=4 --omit=2 --cport=5205 --port=5205 > iperf3_logs/4-best_effort_C5.log &\
+iperf3 --reverse --client=switch.local --zerocopy --udp --bitrate=1G --time=4 --omit=2 --cport=5203 --port=5203 > iperf3_logs/4-best_effort_C3.log
 
 
 

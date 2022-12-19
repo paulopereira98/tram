@@ -2,14 +2,14 @@ Connecting to host switch.local, port 5203
 Reverse mode, remote host switch.local is sending
 [  5] local 10.42.0.84 port 5203 connected to 10.42.0.168 port 5203
 [ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
-[  5]   0.00-1.00   sec  42.2 MBytes   354 Mbits/sec  0.041 ms  0/30533 (0%)  (omitted)
-[  5]   1.00-1.00   sec  40.3 MBytes   169 Mbits/sec  0.049 ms  0/58308 (0%)  
-[  5]   1.00-2.00   sec  40.2 MBytes   338 Mbits/sec  0.041 ms  0/29146 (0%)  
-[  5]   2.00-3.00   sec  40.3 MBytes   338 Mbits/sec  0.097 ms  0/29190 (0%)  
-[  5]   3.00-4.00   sec  40.2 MBytes   337 Mbits/sec  0.051 ms  0/29117 (0%)  
+[  5]   0.00-1.00   sec  42.1 MBytes   353 Mbits/sec  0.044 ms  0/30464 (0%)  (omitted)
+[  5]   1.00-1.00   sec  40.4 MBytes   170 Mbits/sec  0.053 ms  0/58501 (0%)  
+[  5]   1.00-2.00   sec  40.5 MBytes   340 Mbits/sec  0.042 ms  0/29326 (0%)  
+[  5]   2.00-3.00   sec  40.3 MBytes   338 Mbits/sec  0.097 ms  0/29206 (0%)  
+[  5]   3.00-4.00   sec  40.4 MBytes   339 Mbits/sec  0.036 ms  0/29288 (0%)  
 - - - - - - - - - - - - - - - - - - - - - - - - -
 [ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
-[  5]   0.00-4.04   sec   163 MBytes   338 Mbits/sec  0.000 ms  0/116680 (0%)  sender
-[  5]   0.00-4.00   sec   161 MBytes   338 Mbits/sec  0.051 ms  0/116612 (0%)  receiver
+[  5]   0.00-4.04   sec   163 MBytes   339 Mbits/sec  0.000 ms  0/117158 (0%)  sender
+[  5]   0.00-4.00   sec   162 MBytes   339 Mbits/sec  0.036 ms  0/117097 (0%)  receiver
 
 iperf Done.
