@@ -28,11 +28,11 @@ sudo tc qdisc add dev $IFNAME handle $MAJNUM: parent root prio \
 
 # queue 1, prio 3
 sudo tc qdisc replace dev $IFNAME parent $MAJNUM:2 cbs \
-        idleslope 500000 sendslope -500000 hicredit 2699 locredit -771
+        idleslope 300000 sendslope -700000 hicredit 1234 locredit -1079
 
 # queue 0, prios 4+
 sudo tc qdisc replace dev $IFNAME parent $MAJNUM:1 cbs \
-        idleslope 600000 sendslope -400000 hicredit 926 locredit -616
+        idleslope 400000 sendslope -600000 hicredit 617 locredit -925
 
 
 
