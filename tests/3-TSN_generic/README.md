@@ -54,7 +54,7 @@ Class 3:
 **$ iperf3 --reverse --client=switch.local --zerocopy --udp --bitrate=1G --time=4 --omit=2 --cport=5203 --port=5203**
 @import "iperf3_logs/3-cbs_hw_onlyC3_956Mbps.log"
 
-#### Only class 3 + class 5
+#### Class 3 + class 5
 
 **$ iperf3 --reverse --client=asus.local   --zerocopy --udp --bitrate=1G --time=4 --omit=2 --cport=5205 --port=5205 &\\
     iperf3 --reverse --client=switch.local --zerocopy --udp --bitrate=1G --time=4 --omit=2 --cport=5203 --port=5203**
@@ -77,28 +77,39 @@ Class 3:
 **$ iperf3 --reverse --client=asus.local   --zerocopy --udp --bitrate=1G --time=4 --omit=2 --cport=5205 --port=5205 &\\
     iperf3 --reverse --client=switch.local --zerocopy --udp --bitrate=1G --time=4 --omit=2 --cport=5203 --port=5203**
 
-#### 100ns cycle time
+#### 100 ns cycle time
 Class 5:
 @import "iperf3_logs/3-tas_sw_C5_100ns.log"
 Class 3:
 @import "iperf3_logs/3-tas_sw_C3_100ns.log"
 
-#### 1ms cycle time
+#### 1 ms cycle time
 Class 5:
 @import "iperf3_logs/3-tas_sw_C5_1ms.log"
 Class 3:
 @import "iperf3_logs/3-tas_sw_C3_1ms.log"
 
-#### 10ms cycle time
+#### 10 ms cycle time
 
 Class 5:
 @import "iperf3_logs/3-tas_sw_C5_10ms.log"
 Class 3:
 @import "iperf3_logs/3-tas_sw_C3_10ms.log"
 
-#### 100ns cycle time
+#### 100 ms cycle time
 Class 5:
 @import "iperf3_logs/3-tas_sw_C5_100ms.log"
 Class 3:
 @import "iperf3_logs/3-tas_sw_C3_100ms.log"
 
+#### 1 s cycle time
+Class 5:
+@import "iperf3_logs/3-tas_sw_C5_100ms.log"
+Class 3:
+@import "iperf3_logs/3-tas_sw_C3_100ms.log"
+
+#### 10 s cycle time
+Class 5:
+@import "iperf3_logs/3-tas_sw_C5_100ms.log"
+Class 3:
+@import "iperf3_logs/3-tas_sw_C3_100ms.log"

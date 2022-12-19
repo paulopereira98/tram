@@ -90,3 +90,28 @@ sudo tc qdisc show dev $IFNAME parent 0
 #    clockid CLOCK_TAI
 
 
+# 1s Cycle time
+#sudo tc qdisc add dev $IFNAME parent root handle $MAJNUM taprio \
+#    num_tc 4 \
+#    map 3 3 2 1 0 0 0 0  0 0 0 0 0 0 0 0 \
+#    queues 1@0 1@1 1@2 1@3 \
+#    base-time 1000000000 \
+#    sched-entry S 01 500000000 \
+#    sched-entry S 02 400000000 \
+#    sched-entry S 03 100000000 \
+#    sched-entry S 08 100000 \
+#    clockid CLOCK_TAI
+
+
+# 10s Cycle time
+#sudo tc qdisc add dev $IFNAME parent root handle $MAJNUM taprio \
+#    num_tc 4 \
+#    map 3 3 2 1 0 0 0 0  0 0 0 0 0 0 0 0 \
+#    queues 1@0 1@1 1@2 1@3 \
+#    base-time 1000000000 \
+#    sched-entry S 01 5000000000 \
+#    sched-entry S 02 4000000000 \
+#    sched-entry S 03 1000000000 \
+#    sched-entry S 08 10000 \
+#    clockid CLOCK_TAI
+
