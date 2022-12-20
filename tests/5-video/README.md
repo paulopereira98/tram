@@ -103,10 +103,3 @@ Interference:
 
 
 
-../../vimbaperf/vimbaperf --index=0 --stealth --frameRate=10 --binning=1 --time=10 > logs/5-CBS_cam.log &\
-iperf3 --reverse --client=asus.local   --zerocopy --udp --bitrate=1G --time=10 --omit=2 --cport=5201 --port=5201 > logs/5-CBS_C1.log
-
-
-
-
-
