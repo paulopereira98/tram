@@ -22,12 +22,10 @@ sudo tc qdisc add dev $IFNAME parent root handle $MAJNUM taprio \
     sched-entry S 08 10000 \
     clockid CLOCK_TAI
 
-
-
 # sched-entry <command 'S'> <gatemask (Hex)> <interval (ns)>
 
 # gatemasks:
-#          queues:   0123
+#          queues:   3210
 # 00 0000 0000  0000 0000   useless
 # 01 0000 0000  0000 0001   queues 3
 # 02 0000 0000  0000 0010   queue  2
