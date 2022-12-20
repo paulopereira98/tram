@@ -1,0 +1,52 @@
+///////////////////////////////////////////////////////
+///                 Vimba Net Perf                  ///
+///////////////////////////////////////////////////////
+
+Camera Manta-0 not synchronized, PTP status:  Uncalibrated
+Camera Manta-0: Setting PTP mode to Slave
+
+///////////////////    Manta-0     ////////////////////
+
+Camera Statistics
+    Stat Frame Rate         : 9.999479 fps
+    Stat Frames Delivered   : 118
+    Stat Frames Dropped     : 0
+    Stat Frames Rescued     : 0
+    Stat Frames Shoved      : 1
+    Stat Frames Underrun    : 0
+    Stat Local Rate         : 10.004495 fps
+    Stat Packets Errors     : 0
+    Stat Packets Missed     : 0
+    Stat Packets Received   : 741183
+    Stat Packets Requested  : 0
+    Stat Packets Resent     : 0
+    Stat Packets Unavailable: 0
+    Stat Time Elapsed       : 0.0
+
+Frame count : 117
+
+Camera
+    Delta min   :  99.966600 ms
+    Delta max   : 100.013400 ms
+    Delta mean  : 100.000086 ms
+    Delta stdev :   0.000013 ms
+    Fps min     :   9.998660 fps
+    Fps max     :  10.003341 fps
+    Fps mean    :   9.999992 fps
+    Fps stdev   :   0.001254 Hz
+
+Local
+    Delta min   :  99.813385 ms
+    Delta max   : 100.199509 ms
+    Delta mean  : 100.001013 ms
+    Delta stdev :   0.000038 ms
+    Fps min     :   9.980089 fps
+    Fps max     :  10.018696 fps
+    Fps mean    :   9.999900 fps
+    Fps stdev   :   0.003836 Hz
+
+Travel
+    Travel min  :  154.003 ms
+    Travel max  :  154.214 ms
+    Travel mean :  154.042 ms
+    Travel stdev:    0.000 ms

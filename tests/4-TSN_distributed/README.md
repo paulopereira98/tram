@@ -82,10 +82,3 @@ Class 3:
 @import "iperf3_logs/4-700mbps_CBS_C3.log"
 
 
-
-
-iperf3 --reverse --client=asus.local   --zerocopy --udp --bitrate=1G --time=4 --omit=2 --cport=5205 --port=5205 > iperf3_logs/4-CBS_C5.log &\
-iperf3 --reverse --client=switch.local --zerocopy --udp --bitrate=1G --time=4 --omit=2 --cport=5203 --port=5203 > iperf3_logs/4-CBS_C3.log
-
-
-

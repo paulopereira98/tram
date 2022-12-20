@@ -1,0 +1,51 @@
+///////////////////////////////////////////////////////
+///                 Vimba Net Perf                  ///
+///////////////////////////////////////////////////////
+
+Camera Manta-0 synchronized in Slave mode
+
+///////////////////    Manta-0     ////////////////////
+
+Camera Statistics
+    Stat Frame Rate         : 9.999510 fps
+    Stat Frames Delivered   : 118
+    Stat Frames Dropped     : 0
+    Stat Frames Rescued     : 0
+    Stat Frames Shoved      : 1
+    Stat Frames Underrun    : 0
+    Stat Local Rate         : 9.999294 fps
+    Stat Packets Errors     : 0
+    Stat Packets Missed     : 0
+    Stat Packets Received   : 744991
+    Stat Packets Requested  : 0
+    Stat Packets Resent     : 0
+    Stat Packets Unavailable: 0
+    Stat Time Elapsed       : 0.0
+
+Frame count : 117
+
+Camera
+    Delta min   :  99.966200 ms
+    Delta max   : 100.025500 ms
+    Delta mean  :  99.999966 ms
+    Delta stdev :   0.000012 ms
+    Fps min     :   9.997451 fps
+    Fps max     :  10.003381 fps
+    Fps mean    :  10.000003 fps
+    Fps stdev   :   0.001177 Hz
+
+Local
+    Delta min   :  98.877352 ms
+    Delta max   : 101.159351 ms
+    Delta mean  : 100.000287 ms
+    Delta stdev :   0.000160 ms
+    Fps min     :   9.885394 fps
+    Fps max     :  10.113539 fps
+    Fps mean    :   9.999997 fps
+    Fps stdev   :   0.016026 Hz
+
+Travel
+    Travel min  :  153.347 ms
+    Travel max  :  154.708 ms
+    Travel mean :  153.461 ms
+    Travel stdev:    0.000 ms

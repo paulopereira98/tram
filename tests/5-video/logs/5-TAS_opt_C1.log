@@ -1,0 +1,22 @@
+Connecting to host asus.local, port 5201
+Reverse mode, remote host asus.local is sending
+[  5] local 10.42.0.1 port 5201 connected to 10.42.0.21 port 5201
+[ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
+[  5]   0.00-1.00   sec   104 MBytes   874 Mbits/sec  0.007 ms  299037/374509 (80%)  (omitted)
+[  5]   1.00-2.00   sec  23.1 MBytes   193 Mbits/sec  0.011 ms  69672/86371 (81%)  (omitted)
+[  5]   0.00-1.00   sec  23.1 MBytes   193 Mbits/sec  0.017 ms  69619/86312 (81%)  
+[  5]   1.00-2.00   sec  23.1 MBytes   194 Mbits/sec  0.005 ms  69664/86369 (81%)  
+[  5]   2.00-3.00   sec  23.1 MBytes   193 Mbits/sec  0.004 ms  69657/86356 (81%)  
+[  5]   3.00-4.00   sec  23.1 MBytes   193 Mbits/sec  0.010 ms  69715/86414 (81%)  
+[  5]   4.00-5.00   sec  23.1 MBytes   193 Mbits/sec  0.002 ms  69646/86344 (81%)  
+[  5]   5.00-6.00   sec  23.1 MBytes   193 Mbits/sec  0.024 ms  69696/86395 (81%)  
+[  5]   6.00-7.00   sec  23.1 MBytes   193 Mbits/sec  0.007 ms  69605/86302 (81%)  
+[  5]   7.00-8.00   sec  23.1 MBytes   193 Mbits/sec  0.008 ms  69695/86395 (81%)  
+[  5]   8.00-9.00   sec  23.1 MBytes   193 Mbits/sec  0.007 ms  69671/86369 (81%)  
+[  5]   9.00-10.00  sec  23.1 MBytes   193 Mbits/sec  0.008 ms  69600/86299 (81%)  
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
+[  5]   0.00-13.52  sec  1.57 GBytes  1.00 Gbits/sec  0.000 ms  0/878993 (0%)  sender
+[  5]   0.00-10.00  sec   231 MBytes   193 Mbits/sec  0.008 ms  696568/863555 (81%)  receiver
+
+iperf Done.
