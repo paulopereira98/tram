@@ -198,6 +198,8 @@ def setup_parser():
                         help='Camera index (default 0). More than one can be used (ex: -i0 -i1)')
     parser.add_argument('-t', "--time", default=0, type=int, metavar='s',
                         help='Duration in time (default = 0 freerun)')
+    parser.add_argument('-T', "--timeTrigger", action="store_true",
+                        help='Trigger on sencond rollover')
     parser.add_argument('-o', "--outputFile", default="", type=str, metavar='name',
                         help='save stream to video file (name_id_ISO8601.mp4)')
     return parser
@@ -286,8 +288,10 @@ def main():
         displayer = FrameDisplayer(frame_queue, cam_objs, args.stealth_mode)
         
         # start FrameGrabber threads
-        now = time.time_ns()
-        trigger_stamp = now - (now % NSEC_IN_SEC) + (2*NSEC_IN_SEC)
+        trigger_stamp = 0
+        if args.timeTrigger:
+            now = time.time_ns()
+            trigger_stamp = now - (now % NSEC_IN_SEC) + (2*NSEC_IN_SEC)
         #trigger_stamp = now + NSEC_IN_SEC # 1 second from now
         for grabber in grabbers.values():
             grabber.trigger_stamp = trigger_stamp

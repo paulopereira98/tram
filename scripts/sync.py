@@ -13,7 +13,7 @@ AUX_VID_PREFIX = "sync"
 
 def thread_camera(fps :float, bin: int, camIDs :list, indexes :list, time :int):
 
-    cmd = f'../vimbaperf/vimbaperf --stealth --frameRate={fps} --time={time} --binning={bin} '
+    cmd = f'../vimbaperf/vimbaperf --stealth --timeTrigger --frameRate={fps} --time={time} --binning={bin} '
 
     for id in camIDs:
         cmd += f'--cameraID={id} '
