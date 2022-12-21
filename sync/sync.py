@@ -11,6 +11,11 @@ import argparse
 NSEC_IN_SEC = 1000000000
 AUX_VID_PREFIX = "sync"
 
+AUDIO_EXTENSION = ".wav"
+VIDEO_SRC_EXTENSION = ".avi"
+VIDEO_DST_EXTENSION = ".mp4"
+
+
 def thread_camera(fps :float, bin: int, camIDs :list, indexes :list, time :int):
 
     cmd = f'../vimbaperf/vimbaperf --stealth --timeTrigger --frameRate={fps} --time={time} --binning={bin} '
@@ -21,7 +26,7 @@ def thread_camera(fps :float, bin: int, camIDs :list, indexes :list, time :int):
     for index in indexes:
         cmd += f'--index={index} '
 
-    cmd += f'--outputFile=tmp/{AUX_VID_PREFIX}'
+    cmd += f'--outputFile=tmp/{AUX_VID_PREFIX}  > tmp/sync_video.log'
     print(cmd)
     os.system(cmd)
 
@@ -29,8 +34,10 @@ def thread_camera(fps :float, bin: int, camIDs :list, indexes :list, time :int):
 
 def thread_audio(interface :str, time:int):
 
-    cmd = f'sudo ../avbperf/avbperf --ifname={interface} -a default --timeout={time} -ftmp/sync_mic'
+    cmd = f'sudo ../avbperf/avbperf --ifname={interface} -a default --timeout={time} -ftmp/sync_mic \
+        > tmp/sync_audio.log 2>tmp/sync_audio_stderr.log'
     sleep(4)
+    print(cmd)
     os.system(cmd)
 
 
@@ -65,20 +72,22 @@ class MediaFile:
 
 def setup_parser():
     parser = argparse.ArgumentParser(description='Sync utility.')
-    parser.add_argument('-f', "--frameRate", default=10, type=float, metavar='FPS', 
-                        help='Target framerate (default 10 fps)')
+    parser.add_argument('-f', "--frameRate", default=15, type=float, metavar='FPS', 
+                        help='Target framerate (default 15 fps)')
     parser.add_argument('-b', "--binning", default=2, type=int, metavar='FACTOR', 
                         help='On-camera image binning factor. between 1 and 4 (default = 2)')
     parser.add_argument('-c', "--cameraID", default=[], type=str, metavar='ID', action='append',
                         help='Camera id. More than one can be used (ex: -c id0 -c id1)')
     parser.add_argument('-i', "--index", default=[], type=int, metavar='#', action='append',
                         help='Camera index (default 0). More than one can be used (ex: -i0 -i1)')
-    parser.add_argument('-t', "--time", default=0, type=int, metavar='s',
-                        help='Duration in time (default = 0 freerun)')
+    parser.add_argument('-t', "--time", default=10, type=int, metavar='s',
+                        help='Duration in time (default = 10 seconds)')
     parser.add_argument('-o', "--outputFile", default="", type=str, metavar='name',
-                        help='save stream to video file (name_id.mp4)')
+                        help=f'save stream to video file (name_id{VIDEO_DST_EXTENSION})')
     parser.add_argument('-I', "--ifname", default="", type=str, metavar='ifname',
                         help='Audio AVB Network Interface')
+    parser.add_argument('-k', "--keep", dest='keep_tmp_files', action="store_true",
+                        help='Keep temporary files')
     return parser
 
 
@@ -113,11 +122,11 @@ def main():
     videoFiles :list = [] #MediaFile
     audioFile :MediaFile = 0
     for file in os.listdir("./tmp/"):
-        if file.endswith(".mp4"):
+        if file.endswith(VIDEO_SRC_EXTENSION):
             videoFiles.append( MediaFile('./tmp/'+file) )
             
     for file in os.listdir("./tmp/"):
-        if file.endswith(".wav"):
+        if file.endswith(AUDIO_EXTENSION):
             audioFile = MediaFile('./tmp/'+file)
             break
         
@@ -143,20 +152,19 @@ def main():
         cmd = f'ffmpeg '
         cmd += f'-ss {video_offset:.3f} -i "{vfile.path}" -ss {audio_offset:.3f} -i "{audioFile.path}" '
 
-        cmd += f'-map 0:v:0 -map 1:a:0 -c:a aac -c:v copy -shortest '
+        cmd += f'-map 0:v:0 -map 1:a:0 -c:a aac -c:v h264 -shortest '
         cmd += f'-metadata creation_time="{latest_stamp}" '
 
         if args.outputFile != '':
             vfile.filename = args.outputFile + '_' + vfile.filename
-        cmd += f'"./{vfile.filename}.mp4"'
+        cmd += f'"./{vfile.filename}{VIDEO_DST_EXTENSION}" 2>> tmp/sync_ffmpeg.log'
 
         print(cmd)
         os.system(cmd)
 
-        os.remove(vfile.path)
-
-    os.remove(audioFile.path)
-    os.rmdir("tmp/")
+        
+    if not args.keep_tmp_files:
+        os.system("rm -rf ./tmp/")
 
 
 
