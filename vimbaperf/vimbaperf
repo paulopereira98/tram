@@ -52,6 +52,8 @@ NSEC_IN_SEC = 1000000000
 NSEC_IN_MSEC = 1000000
 
 VIDEO_TMP_FILE = "/tmp/vimbaperf"
+VIDEO_EXTENSION = ".avi"
+VIDEO_CODEC = cv2.VideoWriter_fourcc(*'MJPG')
 
 
 def print_preamble():
@@ -85,6 +87,9 @@ def get_camera(camera_id: Optional[str]) -> Camera:
 
 def setup_camera(cam: Camera, fps: int, binning:int):
 
+    # GVSPPacketSize = 1500
+    # GevSCPSPacketSize = 1500
+
     #AcquisitionFrameRateAbs = fps
     #PixelFormat = BayerRG8
     #GainAuto = Continuous
@@ -95,6 +100,14 @@ def setup_camera(cam: Camera, fps: int, binning:int):
     binning = binning if binning <= 4 else 4
     binning = binning if binning >  1 else 1
     with cam:
+
+        try:
+            cam.GVSPPacketSize.set(1500)
+            cam.GevSCPSPacketSize.set(1500)
+        except (AttributeError, VimbaFeatureError):
+            pass
+
+
         # Enable auto exposure time setting if camera supports it
         try:
             cam.ExposureAuto.set('Off')
@@ -201,7 +214,7 @@ def setup_parser():
     parser.add_argument('-T', "--timeTrigger", action="store_true",
                         help='Trigger on sencond rollover')
     parser.add_argument('-o', "--outputFile", default="", type=str, metavar='name',
-                        help='save stream to video file (name_id_ISO8601.mp4)')
+                        help=f'save stream to video file (name_id_ISO8601{VIDEO_EXTENSION})')
     return parser
 
 
@@ -258,7 +271,7 @@ def main():
             if(args.outputFile != ''):
                 cam_obj.video_tmp_name = VIDEO_TMP_FILE\
                                 + ''.join(random.choice(string.ascii_lowercase) for _ in range(10))\
-                                + '.mp4'
+                                + VIDEO_EXTENSION
                 cam_obj.video = cv2.VideoWriter()
 
 
@@ -269,7 +282,7 @@ def main():
                 # setup video
                 if(cam_obj.video):
                     cam_obj.video = cv2.VideoWriter(cam_obj.video_tmp_name, 
-                                cv2.VideoWriter_fourcc('m','p','4','v'), args.frameRate, resolution)
+                                VIDEO_CODEC, args.frameRate, resolution)
                 
                 ptp_status = str(cam.PtpStatus.get())
                 if ptp_status not in ["Slave", "Master"]:
@@ -320,7 +333,7 @@ def main():
                 # ISO 8601 format
                 timestamp = f'{start_time.isoformat()}.{str(begin_stamp%NSEC_IN_SEC) :0>9}Z'
                 os.rename(cam_obj.video_tmp_name, 
-                            args.outputFile + '_' + cam_obj.cam_str_id + '_' + timestamp + '.mp4')
+                            args.outputFile + '_' + cam_obj.cam_str_id + '_' + timestamp + VIDEO_EXTENSION)
                             
 
     #print stats:
