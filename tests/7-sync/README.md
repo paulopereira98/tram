@@ -20,6 +20,10 @@
     sw-->server;
 ```
 
+AVB endpoint:
+**$ sudo avbperf --talker --ifname=enp4s0f1 --dst-addr=MACADDR**
+
+server:
 **$ sync.py --keep --index=0 --index=1 --ifname=enp3s0 --time=8 --frameRate=15 --binning=2**
 
 <video src='./Mako-0.mov' width=180/> | <video src='./Manta-1.mp4' width=180/>
