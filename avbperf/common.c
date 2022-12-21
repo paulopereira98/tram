@@ -80,13 +80,14 @@ int get_presentation_time(uint64_t avtp_time, struct timespec *now, struct times
 	/* If 'ptime' is less than the 'now', it means the higher part
 	 * from 'ptime' needs to be incremented by 1 in order to recover the
 	 * presentation time set by the talker.
-	 */
 	if (ptime < now_aux)
 		ptime += (1ULL << 32);
+	 */
 
 	presentation->tv_sec = ptime / NSEC_PER_SEC;
 	presentation->tv_nsec = ptime % NSEC_PER_SEC;
-
+	if (ptime < now_aux)
+		return 1;
 	return 0;
 }
 
