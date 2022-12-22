@@ -138,7 +138,7 @@ static void term_nonblock_setup(struct termios *term_old_set){
     tcgetattr(0, term_old_set);
     term_new_set = *term_old_set;
     term_new_set.c_lflag &= ~ICANON;
-	term_new_set.c_lflag &= ~ECHO;
+	//term_new_set.c_lflag &= ~ECHO;
     term_new_set.c_cc[VMIN] = 0;
     term_new_set.c_cc[VTIME] = 0;
     tcsetattr(0, TCSANOW, &term_new_set);
