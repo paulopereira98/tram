@@ -1,0 +1,29 @@
+///////////////////////////////////////////////////////
+///                    AVB perf                     ///
+///                AAF Listener Node                ///
+///////////////////////////////////////////////////////
+
+Stream ID       : AABBCCDDEEFF0001
+Sample rate     : 48000 Hz
+Bit depth       : 16-bit
+Channels        : 2
+HW latency      : 128 samples
+HW latency      : 2.67 ms
+Analog e2e lat. : 15.33 ms
+
+------------------ Press ESC to exit ------------------
+
+Received packets: 3750
+Dropped packets : 0
+
+Capture deltas
+min :   0.014440 ms
+max :   5.679724 ms
+mean:   2.667816 ms
+std :   0.012836 ms
+
+Travel times
+min :   2.372669 ms
+max :   4.638774 ms
+mean:   2.519470 ms
+std :   0.034608 ms
