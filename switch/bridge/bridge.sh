@@ -15,6 +15,7 @@ do
     sudo ip link set dev $nic down
     sudo ip link set dev $nic promisc on
     sudo brctl addif $BRIDGE $nic
+    sudo ifconfig $nic mtu 1600 up 
     sudo ip link set dev $nic up
 done
 
