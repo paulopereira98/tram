@@ -192,6 +192,8 @@ int avb_aaf_talker(FILE *term_out, FILE *term_in, char ifname[16], uint8_t macad
 										int priority, stream_settings_t set, char* adev)
 {
 	int fd, res, term_in_fd, key=0;
+	ssize_t n;
+	uint32_t avtp_time;
 	struct sockaddr_ll sk_addr;
 	uint8_t seq_num = 0;
 
@@ -224,10 +226,7 @@ int avb_aaf_talker(FILE *term_out, FILE *term_in, char ifname[16], uint8_t macad
 		goto end;
 
 
-
 	while (1) {
-		ssize_t n;
-		uint32_t avtp_time;
 
 		// read from device
 		avb_alsa_read(pcm_handle, pdu->avtp_payload, set.frames_per_pdu);
