@@ -37,7 +37,7 @@ Biggest packet:
     image size: 588544 Bytes
     packets per frame: 401+1
     burst size: ~650 kBytes
-    average bandwidth: ~20 Mbps/fps
+    average bandwidth: ~6 Mbps/fps
 
 
 ### AVB
