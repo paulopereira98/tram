@@ -215,7 +215,7 @@ int avb_aaf_talker(FILE *term_out, FILE *term_in, char ifname[16], uint8_t macad
 	//setup audio device
 	avb_alsa_setup(&pcm_handle, adev, &set, true);
 
-	print_settings(stdout, set, true);
+	print_settings(term_out, set, true);
 	
 	pdu = alloca(set.pdu_size);
 
