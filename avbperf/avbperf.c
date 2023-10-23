@@ -40,27 +40,27 @@ static char record_file[64] = "";
 
 
 static struct argp_option options[] = {
-	{"ifname"			, 'i', "IFNAME"	, 0, "Network Interface", 1},
-    {"stream-id"    	, 's', "ID"     , 0, "AAF stream ID (default: AABBCCDDEEFF0001)", 2},
-    {"bit-depth"    	, 'b', "bits"   , 0, "Bit depth := {16 | 24} (default: 16)", 3},
-    {"sample-rate"  	, 'r', "Hz"     , 0, "Sample rate := {44100 | 48000 | 96000 | 192000} (default: 48000 Hz)", 4},
-    {"channels"     	, 'c', "NUM"    , 0, "Channel count (default: 2)", 5},
-	{"audio-device"		, 'a', "PCM"    , 0, "Audio device PCM name (default: default)", 6},
-	{"hw-latency"		, 'l', "frames" , 0, "Hardware latency in frames. must be base 2 (default:128)", 7},
-    {"talker"  			, 9	 , 0       	, 0, "Enable Talker mode. (Default: listener mode)", 9},
-	{ 0 }
+    {"ifname"       , 'i', "IFNAME" , 0, "Network Interface", 1},
+    {"stream-id"    , 's', "ID"     , 0, "AAF stream ID (default: AABBCCDDEEFF0001)", 2},
+    {"bit-depth"    , 'b', "bits"   , 0, "Bit depth := {16 | 24} (default: 16)", 3},
+    {"sample-rate"  , 'r', "Hz"     , 0, "Sample rate := {44100 | 48000 | 96000 | 192000} (default: 48000 Hz)", 4},
+    {"channels"     , 'c', "NUM"    , 0, "Channel count (default: 2)", 5},
+    {"audio-device" , 'a', "PCM"    , 0, "Audio device PCM name (default: default)", 6},
+    {"hw-latency"   , 'l', "frames" , 0, "Hardware latency in frames. must be base 2 (default:128)", 7},
+    {"talker"       , 9  , 0        , 0, "Enable Talker mode. (Default: listener mode)", 9},
+    { 0 }
 };
 static struct argp_option options_talker[] = {
-	{"dst-addr"         , 'd', "MACADDR", 0, "Destination MAC address", 11},
-	{"prio"             , 'p', "NUM"    , 0, "SO_PRIORITY to be set in socket (default: 2)", 12},
-	{"max-transit-time" , 'm', "MSEC"   , 0, "Maximum Transit Time in ms. (default: 100)", 13},
-	{ 0 }
+    {"dst-addr"         , 'd', "MACADDR", 0, "Destination MAC address", 11},
+    {"prio"             , 'p', "NUM"    , 0, "SO_PRIORITY to be set in socket (default: 2)", 12},
+    {"max-transit-time" , 'm', "MSEC"   , 0, "Maximum Transit Time in ms. (default: 100)", 13},
+    { 0 }
 };
 static struct argp_option options_listener[] = {
-	{"timeout"  		, 't', "s"      , 0, "Run only for n seconds (default = 0 freerun)", 21},
-	{"file"  			, 'f', "name" 	, 0, "Record audio to file (./<name>.wav)", 22},
-	{"transit-time" 	, 'T', "MSEC"   , 0, "Transit Time in ms, for stats only (must match talker)", 23},
-	{ 0 }
+    {"timeout"      , 't', "s"      , 0, "Run only for n seconds (default = 0 freerun)", 21},
+    {"file"         , 'f', "name"   , 0, "Record audio to file (./<name>.wav)", 22},
+    {"transit-time"	, 'T', "MSEC"   , 0, "Transit Time in ms, for stats only (must match talker)", 23},
+    { 0 }
 };
 
 static error_t parser(int key, char *arg, struct argp_state *state)
@@ -209,13 +209,13 @@ int main(int argc, char *argv[])
 		.sample_rate = sample_rate,
 		.bit_depth = bit_depth,
 		.channels = channels,
-		.data_len = data_len, 			//this value will be updated later by avb_alsa_setup()
-		.pdu_size = pdu_size, 			//this value will be updated later by avb_alsa_setup()
+		.data_len = data_len, 		 //this value will be updated later by avb_alsa_setup()
+		.pdu_size = pdu_size, 		 //this value will be updated later by avb_alsa_setup()
 		.aaf_sample_rate = sample_rate_to_aaf(sample_rate),
 		.aaf_bit_depth = bit_depth_to_aaf(bit_depth),
 		.max_transit_time = max_transit_time,
-		.hw_latency = hw_latency, 		//this value will be updated later by avb_alsa_setup()
-		.frames_per_pdu = hw_latency	//this value will be updated later by avb_alsa_setup()
+		.hw_latency = hw_latency,    //this value will be updated later by avb_alsa_setup()
+		.frames_per_pdu = hw_latency //this value will be updated later by avb_alsa_setup()
 	};
 	/* 
 			For the purposes of this project, 

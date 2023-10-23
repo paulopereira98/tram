@@ -500,7 +500,7 @@ static int new_packet(snd_pcm_t *pcm_handle, int sk_fd, int timer_fd, struct sam
 		return -1;
 	}
 
-	// schedule_sample will only schedule the frame is the buffer is empty
+	// schedule_sample will only schedule the frame if the buffer is empty
 	res = schedule_sample(timer_fd, &presentation, pdu->avtp_payload, samples, set->data_len);
 	if (res < 0)
 		return -1;
@@ -681,7 +681,7 @@ int avb_aaf_listener(FILE * term_out, FILE* term_in, char *ifname, stream_settin
 
 		// Poll socket
 		if (fds[0].revents & POLLIN) {
-			// new_packet will schedule the frame is the buffer is empty
+			// new_packet will schedule the frame if the buffer is empty
 			res = new_packet(pcm_handle, sk_fd, timer_fd, &samples, &expected_seq, &set, &stats);
 			if (res < 0)
 				goto end;
