@@ -101,7 +101,7 @@ class Stats:
 		self.cam_delta.min  = min(deltas)/NSEC_IN_MSEC
 		self.cam_delta.max  = max(deltas)/NSEC_IN_MSEC
 		self.cam_delta.mean = statistics.mean(deltas)/NSEC_IN_MSEC
-		self.cam_delta.std  = statistics.stdev(deltas)/NSEC_IN_SEC
+		self.cam_delta.std  = statistics.stdev(deltas)/NSEC_IN_MSEC
 		self.cam_fps.min    = min(fps)
 		self.cam_fps.max    = max(fps)
 		self.cam_fps.mean   = statistics.mean(fps)
@@ -114,7 +114,7 @@ class Stats:
 		self.loc_delta.min  = min(deltas)/NSEC_IN_MSEC
 		self.loc_delta.max  = max(deltas)/NSEC_IN_MSEC
 		self.loc_delta.mean = statistics.mean(deltas)/NSEC_IN_MSEC
-		self.loc_delta.std  = statistics.stdev(deltas)/NSEC_IN_SEC
+		self.loc_delta.std  = statistics.stdev(deltas)/NSEC_IN_MSEC
 		self.loc_fps.min    = min(fps)
 		self.loc_fps.max    = max(fps)
 		self.loc_fps.mean   = statistics.mean(fps)
@@ -126,7 +126,7 @@ class Stats:
 		self.travel.min    = min(travel_times)/NSEC_IN_MSEC
 		self.travel.max    = max(travel_times)/NSEC_IN_MSEC
 		self.travel.mean   = statistics.mean(travel_times)/NSEC_IN_MSEC
-		self.travel.std    = statistics.stdev(travel_times)/NSEC_IN_SEC
+		self.travel.std    = statistics.stdev(travel_times)/NSEC_IN_MSEC
 	
 
 	def print(self, file):
